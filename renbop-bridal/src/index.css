@@ -1,0 +1,192 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700;800&family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Admin Design Tokens ─────────────────────────────────── */
+:root {
+  --admin-sidebar-bg: #0b0c17;
+  --admin-sidebar-surface: #111220;
+  --admin-sidebar-border: rgba(255,255,255,0.055);
+  --admin-gold: #c9a96e;
+  --admin-gold-light: #e2c08a;
+  --admin-gold-glow: rgba(201, 169, 110, 0.18);
+  --admin-content-bg: #f4f4f8;
+  --admin-card-bg: #ffffff;
+  --admin-card-border: #e8e8f0;
+  --admin-text-primary: #0d0e17;
+  --admin-text-secondary: #6b6b80;
+  --admin-text-muted: #9999b0;
+  --admin-topbar-bg: rgba(248, 248, 252, 0.85);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    @apply antialiased;
+  }
+
+  body {
+    @apply font-sans text-base text-charcoal bg-ivory;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif font-normal;
+  }
+
+  h1 { @apply text-5xl md:text-7xl tracking-tight leading-tight; }
+  h2 { @apply text-4xl md:text-6xl tracking-tight; }
+  h3 { @apply text-3xl md:text-5xl tracking-tight; }
+  h4 { @apply text-2xl md:text-4xl; }
+  h5 { @apply text-xl md:text-3xl; }
+  h6 { @apply text-lg md:text-2xl; }
+}
+
+@layer components {
+  /* Luxury Button Styles */
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-10 py-4 text-[11px] tracking-[0.2em] uppercase;
+    @apply bg-champagne text-white font-sans font-semibold;
+    @apply transition-all duration-500 ease-out;
+    @apply hover:bg-charcoal hover:shadow-[0_10px_30px_rgba(197,160,89,0.3)] hover:-translate-y-1;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-10 py-4 text-[11px] tracking-[0.2em] uppercase;
+    @apply border border-charcoal text-charcoal font-sans font-semibold;
+    @apply transition-all duration-500 ease-out;
+    @apply hover:bg-charcoal hover:text-ivory;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center px-0 py-2 text-[11px] tracking-[0.2em] uppercase;
+    @apply text-charcoal font-sans font-semibold border-b border-charcoal/30;
+    @apply transition-all duration-300;
+    @apply hover:text-champagne hover:border-champagne;
+  }
+
+  /* Glassmorphism Effect */
+  .glass {
+    background: rgba(253, 252, 240, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  /* Luxury Input Fields */
+  .input-luxury {
+    @apply w-full px-0 py-3 text-base bg-transparent;
+    @apply border-0 border-b-2 border-gray-300;
+    @apply focus:border-champagne focus:outline-none;
+    @apply transition-colors duration-300;
+    @apply placeholder:text-gray-400;
+  }
+
+  /* Section Spacing */
+  .section-padding { @apply py-16 md:py-24 lg:py-32; }
+  .container-luxury { @apply max-w-7xl mx-auto px-6 md:px-8 lg:px-12; }
+}
+
+@layer utilities {
+  .reveal { opacity: 0; transform: translateY(30px); }
+  .reveal.active {
+    opacity: 1; transform: translateY(0);
+    transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+  }
+
+  .text-shimmer {
+    background: linear-gradient(90deg, #C5A059 0%, #D4B76F 50%, #C5A059 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 3s linear infinite;
+  }
+
+  /* ── Admin Gold Shimmer ── */
+  .admin-gold-shimmer {
+    background: linear-gradient(90deg,
+      var(--admin-gold) 0%,
+      var(--admin-gold-light) 45%,
+      #f5e0b3 50%,
+      var(--admin-gold-light) 55%,
+      var(--admin-gold) 100%);
+    background-size: 300% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: goldShimmer 4s linear infinite;
+  }
+
+  /* ── Admin Fade Slide In ── */
+  .admin-fade-in {
+    animation: fadeSlideIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+
+  /* ── Drawer Slide In ── */
+  .drawer-slide-in {
+    animation: drawerSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+
+  /* ── Toast Notification ── */
+  .toast-pop {
+    animation: toastPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+}
+
+/* ─── Keyframes ────────────────────────────────────────────── */
+@keyframes shimmer {
+  to { background-position: 200% center; }
+}
+
+@keyframes goldShimmer {
+  0%   { background-position: 0% center; }
+  100% { background-position: 300% center; }
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes drawerSlideIn {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toastPop {
+  from { opacity: 0; transform: translateY(8px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes scrollLine {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  50%  { opacity: 1; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+
+@keyframes goldPulseRing {
+  0%   { box-shadow: 0 0 0 0 rgba(201, 169, 110, 0.4); }
+  70%  { box-shadow: 0 0 0 8px rgba(201, 169, 110, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(201, 169, 110, 0); }
+}
+
+/* ─── Admin Scrollbar ──────────────────────────────────────── */
+.admin-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+.admin-scroll::-webkit-scrollbar-track { background: transparent; }
+.admin-scroll::-webkit-scrollbar-thumb {
+  background: rgba(201, 169, 110, 0.3);
+  border-radius: 99px;
+}
+.admin-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(201, 169, 110, 0.6);
+}
+
+/* ─── Public Site Scrollbar ─────────────────────────────────── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #FDFCF0; }
+::-webkit-scrollbar-thumb { background: #C5A059; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #B39048; }

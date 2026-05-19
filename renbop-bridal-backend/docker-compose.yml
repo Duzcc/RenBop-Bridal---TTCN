@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: renbop_postgres
+    environment:
+      POSTGRES_USER: renbop
+      POSTGRES_PASSWORD: renbop123
+      POSTGRES_DB: renbop_bridal
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - renbop_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U renbop -d renbop_bridal"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: renbop_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - renbop_network
+
+  backend:
+    build: .
+    container_name: renbop_backend
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_URL=jdbc:postgresql://postgres:5432/renbop_bridal
+      - DB_USERNAME=renbop
+      - DB_PASSWORD=renbop123
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=renbo-bridal-super-secret-jwt-key-must-be-at-least-256-bits-long!
+      - CORS_ALLOWED_ORIGINS=http://localhost:5173
+      - FRONTEND_URL=http://localhost:5173
+      - SPRING_PROFILES_ACTIVE=prod
+      # TODO: Configure actual Cloudinary, SMTP, and VNPay keys for production here
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - renbop_network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  renbop_network:
+    driver: bridge
