@@ -1,8 +1,10 @@
 package com.renbobridal.module.product.dto;
 
 import com.renbobridal.module.category.dto.CategoryDto;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -10,6 +12,8 @@ import java.util.List;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ProductDto {
     private Long id;
     private String name;
@@ -27,6 +31,8 @@ public class ProductDto {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class ProductItemDto {
         private Long id;
         private String sku;
