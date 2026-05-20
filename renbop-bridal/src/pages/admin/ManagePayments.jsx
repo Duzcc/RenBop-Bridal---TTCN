@@ -9,6 +9,7 @@ import {
     CheckCircle2, Clock, Ban, Filter, DollarSign,
     ArrowUpRight, Download, ExternalLink, ShieldCheck
 } from 'lucide-react';
+import Pagination from '../../components/admin/Pagination';
 
 /* ─── Config ─────────────────────────────────────────────────────── */
 const STATUS_CONFIG = {
@@ -32,6 +33,8 @@ const ManagePayments = () => {
     const [search, setSearch]     = useState('');
     const [filterStatus, setFilterStatus] = useState('ALL');
     const { showToast }           = useToast();
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
     const [selected, setSelected] = useState(null);
     const [refunding, setRefunding] = useState(null);
 
@@ -75,6 +78,9 @@ const ManagePayments = () => {
             return matchSearch && matchStatus;
         }).sort((a, b) => b.id - a.id);
     }, [payments, search, filterStatus]);
+
+    const totalPages = Math.ceil(filtered.length / itemsPerPage);
+    const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     const counts = useMemo(() => {
         const c = {};
@@ -147,14 +153,14 @@ const ManagePayments = () => {
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-[#f4f4f8] bg-white">
                     <div className="relative flex-[2] max-w-sm">
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9999b0]" />
-                        <input value={search} onChange={e => setSearch(e.target.value)}
+                        <input value={search} onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
                             placeholder="Tìm mã giao dịch, mã đơn..."
                             className="w-full pl-8 pr-3 py-1.5 bg-[#f8f8fc] border border-transparent rounded-lg text-[13px] outline-none focus:border-[#c9a96e] focus:bg-white transition-all" />
                     </div>
                     <div className="h-5 w-px bg-[#e8e8f0]" />
                     <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
                         {[{val:'ALL',label:'Tất cả'}, ...Object.entries(STATUS_CONFIG).map(([k,v])=>({val:k,label:v.label}))].map(({val,label}) => (
-                            <button key={val} onClick={() => setFilterStatus(val)}
+                            <button key={val} onClick={() => { setFilterStatus(val); setCurrentPage(1); }}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold transition-all whitespace-nowrap ${filterStatus === val ? 'bg-[#f4f4f8] text-[#0d0e17]' : 'text-[#6b6b80] hover:bg-[#f8f8fc]'}`}>
                                 {label}
                                 <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-black ${filterStatus === val ? 'bg-[#e8e8f0] text-[#0d0e17]' : 'bg-[#f4f4f8] text-[#9999b0]'}`}>
@@ -184,7 +190,7 @@ const ManagePayments = () => {
                                 <tr><td colSpan="7" className="py-16 text-center"><Loader2 className="animate-spin mx-auto text-[#c9a96e]" size={24} /></td></tr>
                             ) : filtered.length === 0 ? (
                                 <tr><td colSpan="7" className="py-16 text-center text-[#9999b0] font-medium text-[13px]">Không tìm thấy dữ liệu giao dịch</td></tr>
-                            ) : filtered.map(p => (
+                            ) : paginated.map(p => (
                                 <tr key={p.id} onClick={() => setSelected(p)} className="hover:bg-[#f8f8fc] border-b border-[#f4f4f8] transition-colors cursor-pointer group">
                                     <td className="px-5 py-3">
                                         <div className="font-mono font-bold text-[#0d0e17] text-[13px] truncate max-w-[150px]">
@@ -229,6 +235,7 @@ const ManagePayments = () => {
                     </table>
                 </div>
 
+                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
                 <div className="px-6 py-3 border-t border-[#e8e8f0] text-[11px] font-bold text-[#9999b0] bg-white uppercase tracking-wider flex justify-between items-center">
                     <div>Hiển thị <span className="text-[#0d0e17]">{filtered.length}</span> giao dịch</div>
                     <div className="flex items-center gap-4">

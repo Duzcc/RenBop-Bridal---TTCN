@@ -6,6 +6,7 @@ import {
     Loader2, RefreshCw, Calendar, Search, X,
     Plus, CheckCircle2, Clock, Ban, ChevronDown, Trash2, Video, Link as LinkIcon
 } from 'lucide-react';
+import Pagination from '../../components/admin/Pagination';
 
 /* ─── Config ─────────────────────────────────────────────────────── */
 const STATUS_CONFIG = {
@@ -61,6 +62,8 @@ const ManageFittingSessions = () => {
     const [updating, setUpdating] = useState(null);
     const [filterStatus, setFilter] = useState('ALL');
     const [search, setSearch]     = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
 
     const [scheduleModal, setScheduleModal] = useState(null);
     const [form, setForm]         = useState(FORM_INIT);
@@ -172,12 +175,17 @@ const ManageFittingSessions = () => {
         finally { setEditSaving(false); }
     };
 
-    const filtered = useMemo(() => sessions
-        .filter(s => filterStatus === 'ALL' || s.status === filterStatus)
-        .filter(s => !search || [s.customerName, s.productName, s.staffName, String(s.id)]
-            .some(v => v?.toLowerCase().includes(search.toLowerCase())))
-        .sort((a, b) => new Date(b.fittingDate || 0) - new Date(a.fittingDate || 0)),
-        [sessions, filterStatus, search]);
+    const filtered = useMemo(() => {
+        setCurrentPage(1);
+        return sessions
+            .filter(s => filterStatus === 'ALL' || s.status === filterStatus)
+            .filter(s => !search || [s.customerName, s.productName, s.staffName, String(s.id)]
+                .some(v => v?.toLowerCase().includes(search.toLowerCase())))
+            .sort((a, b) => new Date(b.fittingDate || 0) - new Date(a.fittingDate || 0));
+    }, [sessions, filterStatus, search]);
+
+    const totalPages = Math.ceil(filtered.length / itemsPerPage);
+    const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     const counts = useMemo(() => {
         const c = {};
@@ -272,7 +280,7 @@ const ManageFittingSessions = () => {
                                 <tr><td colSpan="8" className="py-16 text-center"><Loader2 className="animate-spin mx-auto text-[#c9a96e]" size={24} /></td></tr>
                             ) : filtered.length === 0 ? (
                                 <tr><td colSpan="8" className="py-16 text-center text-[#9999b0] font-medium text-[13px]">Không có lịch hẹn nào.</td></tr>
-                            ) : filtered.map(s => {
+                            ) : paginated.map(s => {
                                 const cfg = STATUS_CONFIG[s.status] || {};
                                 const parsed = parseNotes(s.notes);
                                 return (
@@ -356,6 +364,7 @@ const ManageFittingSessions = () => {
                     </table>
                 </div>
 
+                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
                 {!loading && filtered.length > 0 && (
                     <div className="px-6 py-3 border-t border-[#e8e8f0] text-[11px] font-bold text-[#9999b0] bg-white uppercase tracking-wider flex justify-between items-center">
                         Hiển thị <span className="text-[#0d0e17]">{filtered.length}</span> / {sessions.length} lịch hẹn

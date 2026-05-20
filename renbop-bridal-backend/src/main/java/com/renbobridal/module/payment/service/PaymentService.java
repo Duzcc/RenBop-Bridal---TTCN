@@ -43,8 +43,8 @@ public class PaymentService {
             throw new AppException(ErrorCode.FORBIDDEN);
         }
 
-        // Đơn phải đang PENDING mới được thanh toán
-        if (order.getStatus() != Order.Status.PENDING) {
+        // Đơn phải đang PENDING hoặc IN_PROGRESS mới được khởi tạo thanh toán
+        if (order.getStatus() == Order.Status.COMPLETED || order.getStatus() == Order.Status.CANCELLED) {
             throw new AppException(ErrorCode.ORDER_NOT_PAYABLE);
         }
 
@@ -169,8 +169,8 @@ public class PaymentService {
                     .instruction("Quét mã QR bằng ứng dụng ngân hàng để chuyển khoản. Nội dung: RENBO " + order.getId())
                     .build();
             case MOMO -> PaymentDto.GatewayInfo.builder()
-                    .deeplink("momo://payment?amount=" + order.getTotalAmount() + "&orderId=" + order.getId() + "&partnerCode=RENBOBRIDAL")
-                    .instruction("Mở ứng dụng MoMo và quét mã hoặc nhấn vào link thanh toán.")
+                    .qrCodeUrl("https://img.vietqr.io/image/970422-0965177911-compact2.png?amount=" + order.getTotalAmount().longValue() + "&addInfo=RENBO%20" + order.getId() + "&accountName=RENBO%20BRIDAL")
+                    .instruction("Quét mã QR bằng ứng dụng MoMo hoặc ứng dụng ngân hàng. Nội dung: RENBO " + order.getId())
                     .build();
             case CREDIT_CARD -> PaymentDto.GatewayInfo.builder()
                     .approvalUrl("https://www.sandbox.paypal.com/checkoutnow?token=RENBO_DEMO_" + payment.getId())

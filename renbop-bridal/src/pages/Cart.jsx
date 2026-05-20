@@ -39,67 +39,94 @@ const Cart = () => {
 
                         <div className="divide-y divide-charcoal/5">
                             <AnimatePresence>
-                                {cartItems.map((item) => (
-                                    <motion.div
-                                        layout
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                                        key={`${item.id}-${item.size}`}
-                                        className="py-8 grid grid-cols-1 md:grid-cols-12 gap-6 items-center overflow-hidden"
-                                    >
-                                        <div className="col-span-1 md:col-span-6 flex gap-6">
-                                            <div className="w-24 h-32 bg-gray-100 flex-shrink-0 relative overflow-hidden">
-                                                <img
-                                                    src={item.imageUrls?.[0] || 'https://images.unsplash.com/photo-1594552072238-b8a337eda7b9?w=800'}
-                                                    alt={item.name}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            </div>
-                                            <div className="flex flex-col justify-center">
-                                                <h3 className="font-serif text-xl text-charcoal mb-2">{item.name}</h3>
-                                                <p className="text-sm text-gray-500 mb-4 font-sans uppercase tracking-wider text-xs">Size: {item.size}</p>
-                                                <button
-                                                    onClick={() => removeFromCart(item.id, item.size)}
-                                                    className="text-xs text-gray-400 flex items-center hover:text-red-500 transition-colors uppercase tracking-widest font-bold"
-                                                >
-                                                    <Trash2 size={12} className="mr-2" /> Remove
-                                                </button>
-                                            </div>
-                                        </div>
+                                {cartItems.map((item) => {
+                                    // Handle image url parsing (product.imageUrls could be a JSON array string)
+                                    let imgUrl = 'https://images.unsplash.com/photo-1594552072238-b8a337eda7b9?w=800';
+                                    const rawUrls = item.product?.imageUrls || item.imageUrls;
+                                    if (rawUrls) {
+                                        if (Array.isArray(rawUrls)) {
+                                            imgUrl = rawUrls[0] || imgUrl;
+                                        } else if (typeof rawUrls === 'string') {
+                                            try {
+                                                const parsed = JSON.parse(rawUrls);
+                                                if (Array.isArray(parsed) && parsed.length > 0) {
+                                                    imgUrl = parsed[0];
+                                                } else {
+                                                    imgUrl = rawUrls;
+                                                }
+                                            } catch (e) {
+                                                imgUrl = rawUrls;
+                                            }
+                                        }
+                                    }
 
-                                        <div className="col-span-1 md:col-span-2 md:text-center text-sm font-sans text-gray-600">
-                                            <span className="md:hidden font-bold mr-2">Price:</span>
-                                            {item.price.toLocaleString()}
-                                        </div>
-
-                                        <div className="col-span-1 md:col-span-2 flex items-center md:justify-center">
-                                            <span className="md:hidden font-bold mr-4">Qty:</span>
-                                            <div className="flex items-center border border-gray-200">
-                                                <button
-                                                    className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 transition-colors text-charcoal"
-                                                    onClick={() => updateQuantity(item.id, item.size, item.quantity - 1)}
-                                                >
-                                                    <Minus size={12} />
-                                                </button>
-                                                <div className="w-8 h-8 flex items-center justify-center font-sans text-xs font-medium text-charcoal">
-                                                    {item.quantity}
+                                    return (
+                                        <motion.div
+                                            layout
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                                            key={item.cartItemId || `${item.product?.id}-${item.size}`}
+                                            className="py-8 grid grid-cols-1 md:grid-cols-12 gap-6 items-center overflow-hidden"
+                                        >
+                                            <div className="col-span-1 md:col-span-6 flex gap-6">
+                                                <div className="w-24 h-32 bg-gray-100 flex-shrink-0 relative overflow-hidden">
+                                                    <img
+                                                        src={imgUrl}
+                                                        alt={item.product?.name || item.name}
+                                                        className="w-full h-full object-cover"
+                                                    />
                                                 </div>
-                                                <button
-                                                    className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 transition-colors text-charcoal"
-                                                    onClick={() => updateQuantity(item.id, item.size, item.quantity + 1)}
-                                                >
-                                                    <Plus size={12} />
-                                                </button>
+                                                <div className="flex flex-col justify-center">
+                                                    <h3 className="font-serif text-xl text-charcoal mb-2">{item.product?.name || item.name}</h3>
+                                                    <p className="text-sm text-gray-500 mb-2 font-sans uppercase tracking-wider text-xs">Size: {item.size}</p>
+                                                    {item.orderType && (
+                                                        <span className="text-[10px] bg-amber-50 text-amber-800 font-bold px-2 py-0.5 rounded border border-amber-100 self-start mb-3 uppercase tracking-wider">
+                                                            {item.orderType === 'PURCHASE' ? 'Mua đứt' : item.orderType === 'RENTAL' ? 'Thuê đồ' : 'May đo'}
+                                                        </span>
+                                                    )}
+                                                    <button
+                                                        onClick={() => removeFromCart(item.cartItemId)}
+                                                        className="text-xs text-gray-400 flex items-center hover:text-red-500 transition-colors uppercase tracking-widest font-bold"
+                                                    >
+                                                        <Trash2 size={12} className="mr-2" /> Remove
+                                                    </button>
+                                                </div>
                                             </div>
-                                        </div>
 
-                                        <div className="col-span-1 md:col-span-2 md:text-right font-medium font-sans text-charcoal">
-                                            <span className="md:hidden font-bold mr-2">Total:</span>
-                                            {(item.price * item.quantity).toLocaleString()}
-                                        </div>
-                                    </motion.div>
-                                ))}
+                                            <div className="col-span-1 md:col-span-2 md:text-center text-sm font-sans text-gray-600">
+                                                <span className="md:hidden font-bold mr-2">Price:</span>
+                                                {item.price.toLocaleString()}
+                                            </div>
+
+                                            <div className="col-span-1 md:col-span-2 flex items-center md:justify-center">
+                                                <span className="md:hidden font-bold mr-4">Qty:</span>
+                                                <div className="flex items-center border border-gray-200">
+                                                    <button
+                                                        className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 transition-colors text-charcoal"
+                                                        onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
+                                                    >
+                                                        <Minus size={12} />
+                                                    </button>
+                                                    <div className="w-8 h-8 flex items-center justify-center font-sans text-xs font-medium text-charcoal">
+                                                        {item.quantity}
+                                                    </div>
+                                                    <button
+                                                        className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 transition-colors text-charcoal"
+                                                        onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
+                                                    >
+                                                        <Plus size={12} />
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="col-span-1 md:col-span-2 md:text-right font-medium font-sans text-charcoal">
+                                                <span className="md:hidden font-bold mr-2">Total:</span>
+                                                {(item.price * item.quantity).toLocaleString()}
+                                            </div>
+                                        </motion.div>
+                                    );
+                                })}
                             </AnimatePresence>
                         </div>
                     </div>

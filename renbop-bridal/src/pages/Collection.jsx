@@ -17,14 +17,45 @@ const Collection = () => {
     });
     const [sortOption, setSortOption] = useState('featured');
 
+    const decodedSlug = decodeURIComponent(slug || '');
+    let minPriceLimit = 0;
+    let maxPriceLimit = Infinity;
+    let isPriceRange = false;
+    let priceTitle = '';
+
+    if (decodedSlug.includes('1-5tr')) {
+        minPriceLimit = 1000000;
+        maxPriceLimit = 5000000;
+        isPriceRange = true;
+        priceTitle = 'Renbop Collection (1-5TR)';
+    } else if (decodedSlug.includes('5-7tr')) {
+        minPriceLimit = 5000000;
+        maxPriceLimit = 7000000;
+        isPriceRange = true;
+        priceTitle = 'Renroy Collection (5-7TR)';
+    } else if (decodedSlug.includes('8-12tr')) {
+        minPriceLimit = 8000000;
+        maxPriceLimit = 12000000;
+        isPriceRange = true;
+        priceTitle = 'Royyal Collection (8-12TR)';
+    } else if (decodedSlug.includes('12-30tr')) {
+        minPriceLimit = 12000000;
+        maxPriceLimit = 30000000;
+        isPriceRange = true;
+        priceTitle = 'Luxury Collection (12-30TR)';
+    }
+
     useEffect(() => {
         const fetchProducts = async () => {
             try {
                 const params = new URLSearchParams();
                 
-                // 1. Phân loại theo categorySlug
-                if (slug && slug !== 'all') {
-                    params.append('categorySlug', slug);
+                // 1. Phân loại theo categorySlug nếu không phải bộ sưu tập theo giá
+                if (slug && slug !== 'all' && !isPriceRange) {
+                    let catSlug = slug;
+                    if (slug === 'vay-cuoi' || slug === 'ao-cuoi') catSlug = 'vay-cuoi-cao-cap';
+                    if (slug === 'ao-dai') catSlug = 'ao-dai-cuoi';
+                    params.append('categorySlug', catSlug);
                 }
 
                 // 2. Sắp xếp
@@ -41,23 +72,36 @@ const Collection = () => {
                     params.append('featured', 'true');
                 }
 
-                // Gọi API backend (Paging xử lý sau, mặc định lấy 50)
-                params.append('size', '50');
+                // Lấy lượng sản phẩm lớn để có thể lọc giá đầy đủ ở client-side
+                params.append('size', '200');
 
                 const response = await apiClient(`/products?${params.toString()}`);
                 
                 if (response.success && response.data) {
                     let result = response.data.content || [];
                     
-                    // Client-side Lọc giá và danh mục phụ
-                     if (filters.categories.length > 0) {
-                         result = result.filter(p => p.category && filters.categories.includes(p.category.slug));
-                     }
-                     if (filters.maxPrice < 50000000) {
-                         result = result.filter(p => p.price <= filters.maxPrice);
-                     }
+                    // Lọc theo bộ sưu tập giá (1-5tr, 5-7tr, v.v...)
+                    if (isPriceRange) {
+                        result = result.filter(p => {
+                            const pPrice = p.salePrice || p.price || p.basePrice || 0;
+                            return pPrice >= minPriceLimit && pPrice <= maxPriceLimit;
+                        });
+                    }
+
+                    // Client-side Lọc danh mục phụ từ bộ lọc Sidebar
+                    if (filters.categories.length > 0) {
+                        result = result.filter(p => p.category && filters.categories.includes(p.category.slug));
+                    }
+                    
+                    // Lọc giá tối đa từ bộ lọc Sidebar
+                    if (filters.maxPrice < 50000000) {
+                        result = result.filter(p => {
+                            const pPrice = p.salePrice || p.price || p.basePrice || 0;
+                            return pPrice <= filters.maxPrice;
+                        });
+                    }
                      
-                     setFilteredProducts(result);
+                    setFilteredProducts(result);
                 }
             } catch (error) {
                 console.error("Failed to fetch products:", error);
@@ -66,16 +110,21 @@ const Collection = () => {
         };
 
         fetchProducts();
-    }, [slug, sortOption, filters]);
+    }, [slug, sortOption, filters, isPriceRange, minPriceLimit, maxPriceLimit]);
 
     const getTitle = () => {
+        if (isPriceRange) return priceTitle;
         // Map slug to display title
         const titles = {
             '2025': 'Collection 2025',
             '2024': 'Collection 2024',
-            'vay-cuoi': 'Bridal Gowns',
-            'ao-dai': 'Ao Dai Couture',
-            'phu-kien': 'Accessories'
+            'vay-cuoi-cao-cap': 'Váy Cưới Cao Cấp',
+            'vay-cuoi': 'Váy Cưới Cao Cấp',
+            'ao-cuoi': 'Váy Cưới Cao Cấp',
+            'ao-dai-cuoi': 'Áo Dài Cưới',
+            'ao-dai': 'Áo Dài Cưới',
+            'vest-chu-re': 'Vest Chú Rể',
+            'phu-kien-cuoi': 'Phụ Kiện Cưới'
         };
         return titles[slug] || 'All Collections';
     };

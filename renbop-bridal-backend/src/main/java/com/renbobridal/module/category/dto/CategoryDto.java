@@ -15,4 +15,5 @@ public class CategoryDto {
     private String slug;
     private String description;
     private String imageUrl;
+    private Long productCount;
 }

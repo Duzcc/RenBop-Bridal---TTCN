@@ -65,11 +65,11 @@ const ProductCard = ({ product }) => {
                 </Link>
                 <div className="mt-1 flex items-center justify-center gap-2">
                     <span className="font-sans text-sm text-champagne font-medium tracking-wide">
-                        {product.price.toLocaleString()} VND
+                        {(product.salePrice || product.price || product.basePrice || 0).toLocaleString()} VND
                     </span>
                     {product.salePrice && (
                         <span className="font-sans text-xs text-gray-400 line-through">
-                            {product.price.toLocaleString()} VND
+                            {(product.price || product.basePrice || 0).toLocaleString()} VND
                         </span>
                     )}
                 </div>

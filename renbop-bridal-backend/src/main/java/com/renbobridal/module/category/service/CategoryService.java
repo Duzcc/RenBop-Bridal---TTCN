@@ -7,6 +7,7 @@ import com.renbobridal.module.category.dto.CategoryDto;
 import com.renbobridal.module.category.dto.CategoryRequest;
 import com.renbobridal.module.category.entity.Category;
 import com.renbobridal.module.category.repository.CategoryRepository;
+import com.renbobridal.module.product.entity.Product;
 import com.renbobridal.module.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
@@ -105,15 +106,40 @@ public class CategoryService {
         categoryRepository.delete(category);
     }
 
+    @Transactional
+    @CacheEvict(value = {"categories", "category", "products", "product"}, allEntries = true)
+    public void assignProductsToCategory(Long categoryId, List<Long> productIds) {
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
+
+        // 1. Dissociate all products currently in this category
+        List<Product> currentProducts = productRepository.findByCategoryId(categoryId);
+        for (Product product : currentProducts) {
+            product.setCategory(null);
+        }
+        productRepository.saveAll(currentProducts);
+
+        // 2. Associate the new list of products
+        if (productIds != null && !productIds.isEmpty()) {
+            List<Product> newProducts = productRepository.findAllById(productIds);
+            for (Product product : newProducts) {
+                product.setCategory(category);
+            }
+            productRepository.saveAll(newProducts);
+        }
+    }
+
     // ── Mapper (public để dùng trong ProductService) ──────────
 
     public CategoryDto mapToDto(Category category) {
         if (category == null) return null;
+        long count = productRepository.countByCategoryId(category.getId());
         return CategoryDto.builder()
                 .id(category.getId())
                 .name(category.getName())
                 .slug(category.getSlug())
                 .description(category.getDescription())
+                .productCount(count)
                 .build();
     }
 

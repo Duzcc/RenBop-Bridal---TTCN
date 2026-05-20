@@ -9,6 +9,7 @@ import {
     ChevronRight, ChevronDown, ImageIcon, 
     Layers, ShoppingBag, Eye, Archive, MoreHorizontal, CheckCircle2
 } from 'lucide-react';
+import Pagination from '../../components/admin/Pagination';
 
 /* ─── Config ─────────────────────────────────────────────────────── */
 const EMPTY_FORM = { name: '', description: '', basePrice: '', salePrice: '', categoryId: '' };
@@ -30,6 +31,8 @@ const ManageProducts = () => {
     const [filterCategory, setFilterCategory] = useState('ALL');
     const { showToast } = useToast();
     const [viewMode, setViewMode] = useState('table'); // 'table' | 'grid'
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
 
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
@@ -195,6 +198,7 @@ const ManageProducts = () => {
     };
 
     const filteredProducts = useMemo(() => {
+        setCurrentPage(1);
         return products.filter(p => {
             const matchSearch = !search || 
                 p.name?.toLowerCase().includes(search.toLowerCase()) || 
@@ -203,6 +207,9 @@ const ManageProducts = () => {
             return matchSearch && matchCat;
         }).sort((a, b) => b.id - a.id);
     }, [products, search, filterCategory]);
+
+    const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+    const paginatedProducts = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     const stats = useMemo(() => {
         const total = products.length;
@@ -307,9 +314,9 @@ const ManageProducts = () => {
                             <tbody className="bg-white">
                                 {loading ? (
                                     <tr><td colSpan="6" className="py-16 text-center"><Loader2 className="animate-spin mx-auto text-[#c9a96e]" size={24} /></td></tr>
-                                ) : filteredProducts.length === 0 ? (
+                                ) : paginatedProducts.length === 0 ? (
                                     <tr><td colSpan="6" className="py-16 text-center text-[#9999b0] font-medium text-[13px]">Không tìm thấy sản phẩm nào</td></tr>
-                                ) : filteredProducts.map(p => (
+                                ) : paginatedProducts.map(p => (
                                     <tr key={p.id} className="hover:bg-[#f8f8fc] border-b border-[#f4f4f8] transition-colors group relative cursor-pointer" onClick={() => openEditDrawer(p)}>
                                         <td className="px-5 py-3">
                                             <div className="flex items-center gap-3">
@@ -383,9 +390,9 @@ const ManageProducts = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-6">
                             {loading ? (
                                 <div className="col-span-full py-16 text-center"><Loader2 className="animate-spin mx-auto text-[#c9a96e]" size={24} /></div>
-                            ) : filteredProducts.length === 0 ? (
+                            ) : paginatedProducts.length === 0 ? (
                                 <div className="col-span-full py-16 text-center text-[#9999b0] font-medium text-[13px]">Không tìm thấy sản phẩm nào</div>
-                            ) : filteredProducts.map(p => (
+                            ) : paginatedProducts.map(p => (
                                 <div key={p.id} onClick={() => openEditDrawer(p)}
                                     className="bg-white border border-[#e8e8f0] rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:border-[#c9a96e] transition-all duration-300 group flex flex-col cursor-pointer relative">
                                     {/* Image container */}
@@ -458,6 +465,7 @@ const ManageProducts = () => {
                         </div>
                     )}
                 </div>
+                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
                 <div className="px-6 py-4 bg-[#f8f8fc] border-t border-[#e8e8f0] text-[11px] font-bold text-[#9999b0] uppercase tracking-wider flex justify-between items-center">
                     <div>Hiển thị <span className="text-[#0d0e17]">{filteredProducts.length}</span> sản phẩm</div>
                     <div className="flex items-center gap-4">

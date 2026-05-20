@@ -9,6 +9,7 @@ import {
     Package, CreditCard, ChevronDown, CheckCircle2,
     Clock, Ban, Filter, MoreHorizontal, Download, Printer
 } from 'lucide-react';
+import Pagination from '../../components/admin/Pagination';
 
 /* ─── Config ─────────────────────────────────────────────────────── */
 const STATUS_CONFIG = {
@@ -35,8 +36,11 @@ const ManageOrders = () => {
     const { showToast } = useToast();
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [updating, setUpdating] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
 
     useEffect(() => {
+        setCurrentPage(1);
         const delayDebounceFn = setTimeout(() => {
             fetchOrders();
         }, 500);
@@ -102,6 +106,8 @@ const ManageOrders = () => {
     };
 
     const filtered = orders;
+    const totalPages = Math.ceil(filtered.length / itemsPerPage);
+    const paginatedOrders = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     const counts = useMemo(() => {
         const c = { TOTAL: orders.length };
@@ -206,9 +212,9 @@ const ManageOrders = () => {
                         <tbody className="bg-white">
                             {loading ? (
                                 <tr><td colSpan="6" className="py-16 text-center"><Loader2 className="animate-spin mx-auto text-[#c9a96e]" size={24} /></td></tr>
-                            ) : filtered.length === 0 ? (
+                            ) : paginatedOrders.length === 0 ? (
                                 <tr><td colSpan="6" className="py-16 text-center text-[#9999b0] font-medium text-[13px]">Không có dữ liệu</td></tr>
-                            ) : filtered.map(o => (
+                            ) : paginatedOrders.map(o => (
                                 <tr key={o.id} onClick={() => setSelectedOrder(o)} className="hover:bg-[#f8f8fc] border-b border-[#f4f4f8] transition-colors cursor-pointer group">
                                     <td className="px-5 py-3">
                                         <div className="font-mono font-bold text-[#0d0e17] text-[13px]">#{o.id}</div>
@@ -248,9 +254,9 @@ const ManageOrders = () => {
                         </tbody>
                     </table>
                 </div>
+                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
             </div>
         </div>
-
         {/* Order Detail Drawer */}
             {selectedOrder && createPortal(
                 <div className="fixed inset-0 z-[150] flex items-center justify-center bg-[#0b0c17]/60 backdrop-blur-sm p-4 transition-opacity print:hidden" onClick={() => setSelectedOrder(null)}>

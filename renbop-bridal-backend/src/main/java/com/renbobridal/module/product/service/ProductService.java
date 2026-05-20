@@ -39,7 +39,6 @@ public class ProductService {
     // ── Public ────────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    @Cacheable(value = "products", key = "{#keyword, #categorySlug, #pageable.pageNumber, #pageable.pageSize}")
     public Page<ProductDto> searchProducts(String keyword, String categorySlug, Pageable pageable) {
         String safeKeyword  = (keyword != null && !keyword.isBlank())       ? keyword.trim()       : null;
         String safeCategory = (categorySlug != null && !categorySlug.isBlank()) ? categorySlug.trim() : null;

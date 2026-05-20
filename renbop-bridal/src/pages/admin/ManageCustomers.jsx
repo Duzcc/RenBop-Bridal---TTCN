@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { apiClient } from '../../utils/apiClient';
 import { useToast } from '../../context/ToastContext';
 import { Trash2, Shield, User, Search, Mail, Phone, RefreshCw, UserCheck, UserX, Crown, X, Plus, Loader2, Ruler, PenBox, ShieldCheck, ShieldOff, Star, Heart, Calendar } from 'lucide-react';
+import Pagination from '../../components/admin/Pagination';
 
 const EMPTY_M = { label: '', gender: 'FEMALE', bust: '', waist: '', hip: '', shoulder: '', armLength: '', note: '' };
 const EMPTY_USER = { name: '', email: '', phone: '', password: '', role: 'ROLE_USER' };
@@ -14,6 +15,8 @@ const ManageCustomers = () => {
     const [search, setSearch]     = useState('');
     const [filterRole, setFilterRole] = useState('ALL');
     const [selectedUser, setSelectedUser] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
     const [activeTab, setActiveTab]       = useState('info');       // 'info' | 'measurements'
     const [measurements, setMeasurements] = useState([]);
     const [mLoading, setMLoading]         = useState(false);
@@ -27,6 +30,7 @@ const ManageCustomers = () => {
     const [userSaving, setUserSaving]     = useState(false);
 
     useEffect(() => {
+        setCurrentPage(1);
         const delayDebounceFn = setTimeout(() => {
             fetchUsers();
         }, 500);
@@ -168,6 +172,8 @@ const ManageCustomers = () => {
     };
 
     const filtered = users;
+    const totalPages = Math.ceil(filtered.length / itemsPerPage);
+    const paginatedUsers = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     const adminCount    = users.filter(u => u.role === 'ROLE_ADMIN').length;
     const customerCount = users.filter(u => u.role !== 'ROLE_ADMIN').length;
@@ -296,7 +302,7 @@ const ManageCustomers = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                filtered.map((u) => (
+                                paginatedUsers.map((u) => (
                                     <tr key={u.id}
                                         className="hover:bg-[#f8f8fc] border-b border-[#f4f4f8] transition-colors cursor-pointer group relative"
                                         onClick={() => openDrawer(u)}
@@ -353,6 +359,7 @@ const ManageCustomers = () => {
                         Hiển thị <span className="text-[#0d0e17]">{filtered.length}</span> / {users.length} người dùng
                     </div>
                 )}
+                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
             </div>
 
             {selectedUser && createPortal(

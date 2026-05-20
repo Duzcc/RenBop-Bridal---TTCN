@@ -27,6 +27,8 @@ import org.springframework.beans.factory.annotation.Value;
 import com.renbobridal.module.email.service.EmailService;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -75,17 +77,29 @@ public class OrderService {
                 .build();
 
         BigDecimal totalAmount = BigDecimal.ZERO;
+        Set<Long> processedProductItemIds = new HashSet<>();
 
         for (OrderRequest.ItemRequest itemReq : request.getItems()) {
             ProductItem productItem = null;
 
             if (itemReq.getProductItemId() != null) {
-                productItem = productItemRepository.findById(itemReq.getProductItemId())
+                Long requestedId = itemReq.getProductItemId();
+                productItem = productItemRepository.findById(requestedId)
                         .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
 
-                if (productItem.getStatus() != ProductItem.Status.AVAILABLE) {
-                    throw new AppException(ErrorCode.OUT_OF_STOCK);
+                if (productItem.getStatus() != ProductItem.Status.AVAILABLE || processedProductItemIds.contains(productItem.getId())) {
+                    final Long productId = productItem.getProduct().getId();
+                    final String size = productItem.getSize();
+                    List<ProductItem> alternatives = productItemRepository.findByProductIdAndSizeAndStatus(
+                            productId, size, ProductItem.Status.AVAILABLE);
+
+                    productItem = alternatives.stream()
+                            .filter(pi -> !processedProductItemIds.contains(pi.getId()))
+                            .findFirst()
+                            .orElseThrow(() -> new AppException(ErrorCode.OUT_OF_STOCK));
                 }
+
+                processedProductItemIds.add(productItem.getId());
 
                 // Đánh dấu sản phẩm đang được sử dụng
                 if (orderType == Order.OrderType.RENTAL) {

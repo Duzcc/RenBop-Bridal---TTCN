@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { apiClient } from '../../utils/apiClient';
 import { useToast } from '../../context/ToastContext';
 import { Loader2, RefreshCw, Tag, Trash2, PenBox, Plus, X, Search, FolderOpen } from 'lucide-react';
+import Pagination from '../../components/admin/Pagination';
 
 const EMPTY_FORM = { name: '', description: '' };
 
@@ -11,11 +12,22 @@ const ManageCategories = () => {
     const [loading, setLoading]       = useState(true);
     const [search, setSearch]         = useState('');
     const { showToast }               = useToast();
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCat, setEditingCat]   = useState(null);
     const [form, setForm]               = useState(EMPTY_FORM);
     const [isSaving, setIsSaving]       = useState(false);
+
+    // Assign products states
+    const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+    const [assigningCat, setAssigningCat]           = useState(null);
+    const [allProducts, setAllProducts]             = useState([]);
+    const [loadingProducts, setLoadingProducts]     = useState(false);
+    const [selectedProductIds, setSelectedProductIds] = useState(new Set());
+    const [searchProductText, setSearchProductText] = useState('');
+    const [isSavingProducts, setIsSavingProducts]   = useState(false);
 
     useEffect(() => { fetchCategories(); }, []);
 
@@ -26,6 +38,51 @@ const ManageCategories = () => {
             if (res.success) setCategories(res.data?.content || res.data || []);
         } catch { showToast('❌ Không thể tải danh mục'); }
         finally { setLoading(false); }
+    };
+
+    const openAssignProducts = async (cat) => {
+        setAssigningCat(cat);
+        setIsAssignModalOpen(true);
+        setLoadingProducts(true);
+        setSearchProductText('');
+        try {
+            const res = await apiClient('/products?size=1000');
+            if (res.success) {
+                const productsList = res.data?.content || res.data || [];
+                setAllProducts(productsList);
+                const selectedIds = new Set(
+                    productsList
+                        .filter(p => p.category?.id === cat.id)
+                        .map(p => p.id)
+                );
+                setSelectedProductIds(selectedIds);
+            }
+        } catch {
+            showToast('❌ Không thể tải danh sách sản phẩm');
+        } finally {
+            setLoadingProducts(false);
+        }
+    };
+
+    const handleSaveProducts = async (e) => {
+        e.preventDefault();
+        setIsSavingProducts(true);
+        try {
+            const res = await apiClient(`/categories/${assigningCat.id}/products`, {
+                method: 'PUT',
+                body: JSON.stringify(Array.from(selectedProductIds))
+            });
+            if (res.success) {
+                showToast('✅ Đã sắp xếp sản phẩm vào danh mục');
+                setIsAssignModalOpen(false);
+                setAssigningCat(null);
+                fetchCategories();
+            }
+        } catch (err) {
+            showToast(`❌ Lỗi: ${err.message}`);
+        } finally {
+            setIsSavingProducts(false);
+        }
     };
 
     const openCreate = () => {
@@ -82,6 +139,8 @@ const ManageCategories = () => {
         c.name?.toLowerCase().includes(search.toLowerCase()) ||
         c.slug?.toLowerCase().includes(search.toLowerCase())
     );
+    const totalPages = Math.ceil(filtered.length / itemsPerPage);
+    const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     // Simple color palette for category badges
     const PALETTE = [
@@ -119,7 +178,7 @@ const ManageCategories = () => {
             <div className="relative max-w-sm">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9999b0]" />
                 <input type="text" placeholder="Tìm kiếm danh mục..."
-                    value={search} onChange={e => setSearch(e.target.value)}
+                    value={search} onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
                     className="w-full pl-9 pr-4 py-2 bg-white border border-[#e8e8f0] rounded-xl text-[13px] outline-none focus:border-[#c9a96e] transition-all shadow-sm" />
             </div>
 
@@ -130,7 +189,7 @@ const ManageCategories = () => {
                 </div>
             ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                    {filtered.map((cat, idx) => {
+                    {paginated.map((cat, idx) => {
                         const p = PALETTE[idx % PALETTE.length];
                         return (
                             <div key={cat.id}
@@ -162,13 +221,17 @@ const ManageCategories = () => {
                                 </div>
 
                                 {/* Hover Actions Overlay */}
-                                <div className="absolute inset-0 bg-[#0d0e17]/80 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                                <div className="absolute inset-0 bg-[#0d0e17]/80 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center gap-2.5 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                                    <button onClick={() => openAssignProducts(cat)}
+                                        className="flex items-center gap-2 w-[140px] justify-center px-4 py-2 bg-[#c9a96e] text-white rounded-xl text-[12px] font-black hover:bg-[#b08e54] transition-colors shadow-lg">
+                                        <FolderOpen size={13} /> Sắp xếp SP
+                                    </button>
                                     <button onClick={() => openEdit(cat)}
-                                        className="flex items-center gap-2 w-[120px] justify-center px-4 py-2 bg-white text-[#0d0e17] rounded-xl text-[12px] font-black hover:bg-[#c9a96e] hover:text-white transition-colors shadow-lg">
+                                        className="flex items-center gap-2 w-[140px] justify-center px-4 py-2 bg-white text-[#0d0e17] rounded-xl text-[12px] font-black hover:bg-slate-100 transition-colors shadow-lg">
                                         <PenBox size={13} /> Chỉnh sửa
                                     </button>
                                     <button onClick={() => handleDelete(cat)}
-                                        className="flex items-center gap-2 w-[120px] justify-center px-4 py-2 bg-red-500 text-white rounded-xl text-[12px] font-black hover:bg-red-600 transition-colors shadow-lg">
+                                        className="flex items-center gap-2 w-[140px] justify-center px-4 py-2 bg-red-500 text-white rounded-xl text-[12px] font-black hover:bg-red-600 transition-colors shadow-lg">
                                         <Trash2 size={13} /> Xóa
                                     </button>
                                 </div>
@@ -187,11 +250,14 @@ const ManageCategories = () => {
                 </div>
             )}
 
-            {!loading && (
-                <p className="text-[11px] font-bold text-[#9999b0] uppercase tracking-wider">
-                    Hiển thị <span className="text-[#0d0e17]">{filtered.length}</span> / {categories.length} danh mục
-                </p>
-            )}
+            <div className="bg-white rounded-xl shadow-sm border border-[#e8e8f0] overflow-hidden">
+                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+                {!loading && (
+                    <div className="px-6 py-4 bg-[#f8f8fc] border-t border-[#e8e8f0] text-[11px] font-bold text-[#9999b0] uppercase tracking-wider">
+                        Hiển thị <span className="text-[#0d0e17]">{filtered.length}</span> / {categories.length} danh mục
+                    </div>
+                )}
+            </div>
 
             {/* Create / Edit Modal */}
             {isModalOpen && createPortal(
@@ -237,6 +303,115 @@ const ManageCategories = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Assign Products Modal */}
+            {isAssignModalOpen && assigningCat && createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#0b0c17]/60 p-4 backdrop-blur-sm" onClick={() => setIsAssignModalOpen(false)}>
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-[600px] h-[80vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center px-7 py-6 border-b border-[#f4f4f8]">
+                            <div>
+                                <h2 className="text-xl font-bold text-[#0d0e17]">Sắp Xếp Sản Phẩm</h2>
+                                <p className="text-[13px] font-medium text-[#c9a96e] mt-0.5">Danh mục: {assigningCat.name}</p>
+                            </div>
+                            <button onClick={() => setIsAssignModalOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full text-[#9999b0] hover:text-[#0d0e17] hover:bg-[#f4f4f8] transition-colors">
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {/* Search bar for products in modal */}
+                        <div className="px-7 py-4 border-b border-[#f4f4f8] bg-[#f8f8fc]">
+                            <div className="relative">
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9999b0]" />
+                                <input type="text" placeholder="Tìm sản phẩm cần sắp xếp..."
+                                    value={searchProductText} onChange={e => setSearchProductText(e.target.value)}
+                                    className="w-full pl-9 pr-4 py-2 bg-white border border-[#e8e8f0] rounded-xl text-[13px] outline-none focus:border-[#c9a96e] transition-all shadow-sm" />
+                            </div>
+                        </div>
+
+                        {/* Products list */}
+                        <div className="flex-1 overflow-y-auto p-7 space-y-3 admin-scroll">
+                            {loadingProducts ? (
+                                <div className="flex flex-col items-center justify-center py-12 text-[#9999b0] font-medium">
+                                    <Loader2 className="animate-spin text-[#c9a96e] mb-2" size={24} />
+                                    Đang tải danh sách sản phẩm...
+                                </div>
+                            ) : allProducts.length === 0 ? (
+                                <div className="text-center py-12 text-[#9999b0] font-medium text-[13px]">Không có sản phẩm nào trong hệ thống.</div>
+                            ) : (
+                                (() => {
+                                    const filteredProds = allProducts.filter(p =>
+                                        p.name?.toLowerCase().includes(searchProductText.toLowerCase()) ||
+                                        p.slug?.toLowerCase().includes(searchProductText.toLowerCase())
+                                    );
+                                    if (filteredProds.length === 0) {
+                                        return <div className="text-center py-12 text-[#9999b0] font-medium text-[13px]">Không tìm thấy sản phẩm phù hợp.</div>;
+                                    }
+                                    return filteredProds.map(p => {
+                                        const isChecked = selectedProductIds.has(p.id);
+                                        let imageSrc = null;
+                                        if (p.imageUrls && p.imageUrls.length > 0) {
+                                            imageSrc = p.imageUrls[0];
+                                        }
+                                        return (
+                                            <div key={p.id} onClick={() => {
+                                                const next = new Set(selectedProductIds);
+                                                if (next.has(p.id)) next.delete(p.id);
+                                                else next.add(p.id);
+                                                setSelectedProductIds(next);
+                                            }}
+                                            className={`flex items-center gap-4 p-3 rounded-2xl border transition-all cursor-pointer select-none ${
+                                                isChecked ? 'border-[#c9a96e] bg-[#c9a96e]/5 shadow-sm' : 'border-[#e8e8f0] hover:bg-[#f8f8fc]'
+                                            }`}>
+                                                <input type="checkbox" checked={isChecked} readOnly
+                                                    className="w-4 h-4 rounded text-[#c9a96e] focus:ring-[#c9a96e] border-[#e8e8f0]" />
+                                                
+                                                {imageSrc ? (
+                                                    <img src={imageSrc} alt={p.name} className="w-12 h-12 rounded-xl object-cover border border-[#e8e8f0] shrink-0" />
+                                                ) : (
+                                                    <div className="w-12 h-12 rounded-xl bg-[#f4f4f8] flex items-center justify-center text-[10px] font-bold text-[#9999b0] border border-[#e8e8f0] shrink-0">Không ảnh</div>
+                                                )}
+
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="font-bold text-[#0d0e17] text-[13px] truncate">{p.name}</div>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <span className="text-[11px] font-mono text-[#9999b0]">ID: {p.id}</span>
+                                                        {p.category && (
+                                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                                                                p.category.id === assigningCat.id ? 'bg-[#c9a96e]/15 text-[#c9a96e]' : 'bg-[#f4f4f8] text-[#9999b0]'
+                                                            }`}>
+                                                                {p.category.name}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    });
+                                })()
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex justify-between items-center px-7 py-5 border-t border-[#f4f4f8] bg-[#f8f8fc]">
+                            <div className="text-[12px] font-bold text-[#6b6b80]">
+                                Đã chọn: <span className="text-[#c9a96e] font-mono">{selectedProductIds.size}</span> sản phẩm
+                            </div>
+                            <div className="flex gap-2">
+                                <button type="button" onClick={() => setIsAssignModalOpen(false)}
+                                    className="px-5 py-2.5 text-[#0d0e17] bg-white border border-[#e8e8f0] hover:bg-[#f8f8fc] rounded-xl font-bold transition-colors text-[13px]">
+                                    Hủy
+                                </button>
+                                <button type="button" onClick={handleSaveProducts} disabled={isSavingProducts || loadingProducts}
+                                    className="px-7 py-2.5 bg-[#0d0e17] hover:bg-black text-white rounded-xl font-bold transition-all flex items-center gap-2 disabled:opacity-70 shadow-md text-[13px]">
+                                    {isSavingProducts && <Loader2 size={16} className="animate-spin text-[#c9a96e]" />}
+                                    Lưu thay đổi
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>,
                 document.body

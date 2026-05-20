@@ -66,4 +66,14 @@ public class CategoryController {
         categoryService.deleteCategory(id);
         return ResponseEntity.ok(ApiResponse.ok("Xóa danh mục thành công"));
     }
+
+    @PutMapping("/{id}/products")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "[Admin] Assign products to category")
+    public ResponseEntity<ApiResponse<Void>> assignProductsToCategory(
+            @PathVariable Long id,
+            @RequestBody List<Long> productIds) {
+        categoryService.assignProductsToCategory(id, productIds);
+        return ResponseEntity.ok(ApiResponse.ok("Sắp xếp sản phẩm vào danh mục thành công"));
+    }
 }

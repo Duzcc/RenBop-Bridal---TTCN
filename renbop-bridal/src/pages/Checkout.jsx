@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../utils/apiClient';
@@ -66,6 +66,41 @@ const Checkout = () => {
     const [payment, setPayment]             = useState(null);
     const [paymentDone, setPaymentDone]     = useState(false);
 
+    const [searchParams] = useSearchParams();
+    const queryOrderId = searchParams.get('orderId');
+    const [loadingOrder, setLoadingOrder] = useState(false);
+
+    const paymentAmount = createdOrder ? (createdOrder.totalAmount || 0) : subtotal;
+
+    useEffect(() => {
+        if (queryOrderId) {
+            const fetchOrder = async () => {
+                setLoadingOrder(true);
+                setErrorMsg('');
+                try {
+                    const res = await apiClient(`/orders/${queryOrderId}`);
+                    if (res.success && res.data) {
+                        if (res.data.status !== 'PENDING') {
+                            setErrorMsg('Đơn hàng này không ở trạng thái chờ thanh toán.');
+                            setTimeout(() => navigate('/profile'), 3000);
+                            return;
+                        }
+                        setCreatedOrder(res.data);
+                        setStep(2);
+                    } else {
+                        setErrorMsg('Không thể tải thông tin đơn hàng.');
+                    }
+                } catch (err) {
+                    console.error("Lỗi tải đơn hàng:", err);
+                    setErrorMsg(err.message || 'Lỗi khi tải đơn hàng.');
+                } finally {
+                    setLoadingOrder(false);
+                }
+            };
+            fetchOrder();
+        }
+    }, [queryOrderId, navigate]);
+
     const handleInput = (e) => {
         const { name, value, type, checked } = e.target;
         setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
@@ -102,9 +137,16 @@ const Checkout = () => {
                         expandedItems.push({
                             productItemId: i.productItemId || null,
                             price: i.price || 0,
-                            rentalStartDate: i.rentalStartDate || null,
-                            rentalEndDate: i.rentalEndDate || null,
-                            notes: i.notes || ''
+                            rentalStartDate: i.rentalStartDate && i.rentalStartDate !== '' ? i.rentalStartDate : null,
+                            rentalEndDate: i.rentalEndDate && i.rentalEndDate !== '' ? i.rentalEndDate : null,
+                            notes: i.notes || '',
+                            measurements: i.measurements ? {
+                                bust: i.measurements.bust && i.measurements.bust !== '' ? parseFloat(i.measurements.bust) : null,
+                                waist: i.measurements.waist && i.measurements.waist !== '' ? parseFloat(i.measurements.waist) : null,
+                                hip: i.measurements.hip && i.measurements.hip !== '' ? parseFloat(i.measurements.hip) : null,
+                                shoulder: i.measurements.shoulder && i.measurements.shoulder !== '' ? parseFloat(i.measurements.shoulder) : null,
+                                armLength: i.measurements.armLength && i.measurements.armLength !== '' ? parseFloat(i.measurements.armLength) : null
+                            } : null
                         });
                     }
                 });
@@ -115,6 +157,7 @@ const Checkout = () => {
                     items: expandedItems
                 };
 
+                console.error("Gửi payload tạo đơn hàng (JSON):", JSON.stringify(payload, null, 2));
                 const res = await apiClient('/orders', { method: 'POST', body: JSON.stringify(payload) });
                 if (res.success && !firstCreatedOrder) {
                     firstCreatedOrder = res.data; // Dùng Order đầu tiên để thanh toán
@@ -123,9 +166,15 @@ const Checkout = () => {
 
             if (firstCreatedOrder) {
                 setCreatedOrder(firstCreatedOrder);
+                clearCart();
                 setStep(2);
             }
         } catch (err) {
+            console.error("Lỗi tạo đơn hàng:", err);
+            console.error("Lỗi message:", err.message);
+            if (err.data) {
+                console.error("Chi tiết lỗi validation từ API (JSON):", JSON.stringify(err.data, null, 2));
+            }
             setErrorMsg(err.message || 'Lỗi khi tạo đơn hàng.');
         } finally {
             setSubmitting(false);
@@ -138,12 +187,12 @@ const Checkout = () => {
         setSubmitting(true);
         setErrorMsg('');
         try {
+            const paymentAmount = createdOrder.totalAmount;
             if (paymentMethod === 'VNPAY') {
-                const res = await apiClient(`/payments/vnpay/create-url?orderId=${createdOrder.id}&amount=${subtotal}`, {
+                const res = await apiClient(`/payments/vnpay/create-url?orderId=${createdOrder.id}&amount=${paymentAmount}`, {
                     method: 'POST'
                 });
                 if (res.success && res.data) {
-                    clearCart(); // Xóa giỏ hàng trước khi chuyển hướng
                     window.location.href = res.data; // Chuyển sang trang VNPAY
                 }
             } else {
@@ -158,6 +207,7 @@ const Checkout = () => {
                 }
             }
         } catch (err) {
+            console.error("Lỗi khởi tạo thanh toán:", err);
             setErrorMsg(err.message || 'Lỗi khởi tạo thanh toán.');
         } finally {
             setSubmitting(false);
@@ -176,11 +226,15 @@ const Checkout = () => {
             );
             if (res.success) {
                 setPaymentDone(true);
+                if (res.data) {
+                    setPayment(res.data);
+                }
                 if (success) {
                     clearCart();
                 }
             }
         } catch (err) {
+            console.error("Lỗi xác nhận thanh toán:", err);
             setErrorMsg(err.message || 'Lỗi xác nhận thanh toán.');
         } finally {
             setSubmitting(false);
@@ -188,49 +242,70 @@ const Checkout = () => {
     };
 
     // ── Order Summary Component ────────────────────────────────────────────
-    const OrderSummary = () => (
-        <div className="w-full lg:w-2/5 px-4 lg:px-16 py-12 lg:py-16 bg-[#faf9f7] lg:min-h-screen">
-            <div className="max-w-md mx-auto sticky top-16">
-                <h3 className="font-serif text-lg text-charcoal mb-6">Đơn hàng của bạn</h3>
-                <div className="space-y-5 mb-8 max-h-[45vh] overflow-auto pr-2">
-                    {cartItems.map((item, index) => (
-                        <div key={item.cartItemId || index} className="flex items-start gap-4">
-                            <div className="w-16 h-20 bg-gray-100 rounded-sm overflow-hidden border border-black/5 flex-shrink-0 relative">
-                                <img src={item.product?.imageUrls?.[0] || 'https://images.unsplash.com/photo-1594552072238-b8a337eda7b9?w=400'} alt={item.product?.name} className="w-full h-full object-cover" />
-                                <span className="absolute -top-1 -right-1 w-5 h-5 bg-gray-500 text-white rounded-full flex items-center justify-center text-[10px] font-bold z-10">{item.quantity}</span>
-                            </div>
-                            <div className="flex-grow min-w-0 pt-1">
-                                <h4 className="font-serif text-charcoal text-sm truncate">{item.product?.name}</h4>
-                                <div className="text-xs text-gray-500 mt-1 space-y-0.5">
-                                    <p className="font-medium text-amber-700">
-                                        [{item.orderType === 'RENTAL' ? 'THUÊ' : item.orderType === 'TAILORING' ? 'MAY ĐO' : 'MUA'}]
-                                    </p>
-                                    <p>Size: {item.size}</p>
-                                    {item.orderType === 'RENTAL' && item.rentalStartDate && (
-                                        <p className="text-[10px]">{item.rentalStartDate} đến {item.rentalEndDate}</p>
-                                    )}
-                                    {item.orderType === 'TAILORING' && item.notes && (
-                                        <p className="text-[10px] truncate max-w-[150px]" title={item.notes}>Ghi chú: {item.notes}</p>
-                                    )}
+    const OrderSummary = () => {
+        const summaryItems = createdOrder?.items || cartItems;
+        const summaryTotal = createdOrder ? createdOrder.totalAmount : subtotal;
+
+        return (
+            <div className="w-full lg:w-2/5 px-4 lg:px-16 py-12 lg:py-16 bg-[#faf9f7] lg:min-h-screen">
+                <div className="max-w-md mx-auto sticky top-16">
+                    <h3 className="font-serif text-lg text-charcoal mb-6">Đơn hàng của bạn</h3>
+                    <div className="space-y-5 mb-8 max-h-[45vh] overflow-auto pr-2">
+                        {summaryItems.map((item, index) => {
+                            const isOrderItem = !!createdOrder;
+                            const productName = isOrderItem ? item.productName : item.product?.name;
+                            const orderType = isOrderItem ? item.orderType || createdOrder.orderType : item.orderType;
+                            const size = isOrderItem ? item.size : item.size;
+                            const price = isOrderItem ? item.price : item.price;
+                            const quantity = isOrderItem ? item.quantity : item.quantity;
+                            const imageUrl = isOrderItem ? null : (item.product?.imageUrls?.[0]);
+
+                            return (
+                                <div key={item.cartItemId || item.id || index} className="flex items-start gap-4">
+                                    <div className="w-16 h-20 bg-gray-100 rounded-sm overflow-hidden border border-black/5 flex-shrink-0 relative">
+                                        {imageUrl ? (
+                                            <img src={imageUrl} alt={productName} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full bg-gradient-to-br from-amber-50 to-amber-100 flex items-center justify-center">
+                                                <span className="text-[10px] text-amber-700/60 font-bold uppercase tracking-wider">Renbo</span>
+                                            </div>
+                                        )}
+                                        <span className="absolute -top-1 -right-1 w-5 h-5 bg-gray-500 text-white rounded-full flex items-center justify-center text-[10px] font-bold z-10">{quantity}</span>
+                                    </div>
+                                    <div className="flex-grow min-w-0 pt-1">
+                                        <h4 className="font-serif text-charcoal text-sm truncate">{productName}</h4>
+                                        <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+                                            <p className="font-medium text-amber-700">
+                                                [{orderType === 'RENTAL' ? 'THUÊ' : orderType === 'TAILORING' ? 'MAY ĐO' : 'MUA'}]
+                                            </p>
+                                            <p>Size: {size}</p>
+                                            {orderType === 'RENTAL' && item.rentalStartDate && (
+                                                <p className="text-[10px]">{item.rentalStartDate} đến {item.rentalEndDate}</p>
+                                            )}
+                                            {orderType === 'TAILORING' && item.notes && (
+                                                <p className="text-[10px] truncate max-w-[150px]" title={item.notes}>Ghi chú: {item.notes}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="text-sm font-medium text-charcoal whitespace-nowrap pt-1">
+                                        {((price || 0) * quantity).toLocaleString()} ₫
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="text-sm font-medium text-charcoal whitespace-nowrap pt-1">
-                                {((item.price || 0) * item.quantity).toLocaleString()} ₫
-                            </div>
+                            );
+                        })}
+                    </div>
+                    <div className="border-t border-charcoal/10 pt-6 space-y-2 text-sm">
+                        <div className="flex justify-between text-gray-500"><span>Tạm tính</span><span>{summaryTotal?.toLocaleString()} ₫</span></div>
+                        <div className="flex justify-between text-gray-500"><span>Phí vận chuyển</span><span className="italic text-xs">Miễn phí</span></div>
+                        <div className="flex justify-between font-serif text-lg text-charcoal pt-4 border-t border-charcoal/10">
+                            <span>Tổng cộng</span>
+                            <span>{summaryTotal?.toLocaleString()} ₫</span>
                         </div>
-                    ))}
-                </div>
-                <div className="border-t border-charcoal/10 pt-6 space-y-2 text-sm">
-                    <div className="flex justify-between text-gray-500"><span>Tạm tính</span><span>{subtotal.toLocaleString()} ₫</span></div>
-                    <div className="flex justify-between text-gray-500"><span>Phí vận chuyển</span><span className="italic text-xs">Miễn phí</span></div>
-                    <div className="flex justify-between font-serif text-lg text-charcoal pt-4 border-t border-charcoal/10">
-                        <span>Tổng cộng</span>
-                        <span>{subtotal.toLocaleString()} ₫</span>
                     </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     return (
         <div className="min-h-screen bg-white flex flex-col lg:flex-row">
@@ -265,8 +340,14 @@ const Checkout = () => {
                     )}
 
                     {/* ── STEP 1: Thông tin giao hàng ── */}
-                    <AnimatePresence mode="wait">
-                        {step === 1 && (
+                    {loadingOrder ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-gray-500 animate-pulse">
+                            <Loader2 className="animate-spin text-amber-700 mb-3" size={28} />
+                            <span className="text-xs uppercase tracking-wider font-bold">Đang tải thông tin đơn hàng...</span>
+                        </div>
+                    ) : (
+                        <AnimatePresence mode="wait">
+                            {step === 1 ? (
                             <motion.form key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
                                 onSubmit={handleCreateOrder} className="space-y-8">
                                 <section>
@@ -304,10 +385,7 @@ const Checkout = () => {
                                     </button>
                                 </div>
                             </motion.form>
-                        )}
-
-                        {/* ── STEP 2: Chọn phương thức thanh toán ── */}
-                        {step === 2 && (
+                        ) : step === 2 ? (
                             <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                                 <div>
                                     <h2 className="font-serif text-xl text-charcoal mb-1">Phương thức thanh toán</h2>
@@ -340,14 +418,11 @@ const Checkout = () => {
                                     <button onClick={handleInitiatePayment} disabled={submitting}
                                         className="flex-1 flex items-center justify-center gap-2 bg-charcoal text-white py-3 uppercase tracking-[0.15em] text-xs font-bold hover:bg-amber-700 transition-all duration-300 rounded disabled:opacity-60">
                                         {submitting ? <Loader2 className="animate-spin" size={15} /> : null}
-                                        Thanh toán {subtotal.toLocaleString()} ₫
+                                        Thanh toán {paymentAmount.toLocaleString()} ₫
                                     </button>
                                 </div>
                             </motion.div>
-                        )}
-
-                        {/* ── STEP 3: Xác nhận & Kết quả ── */}
-                        {step === 3 && (
+                        ) : step === 3 ? (
                             <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                                 {!paymentDone ? (
                                     <>
@@ -401,7 +476,7 @@ const Checkout = () => {
                                 ) : (
                                     /* Kết quả cuối */
                                     <div className="text-center py-8 space-y-5">
-                                        {payment?.status === 'COMPLETED' || true ? (
+                                        {payment?.status === 'COMPLETED' || paymentMethod === 'COD' ? (
                                             <>
                                                 <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
                                                     <CheckCircle2 className="text-emerald-500" size={44} />
@@ -434,8 +509,9 @@ const Checkout = () => {
                                     </div>
                                 )}
                             </motion.div>
-                        )}
+                        ) : null}
                     </AnimatePresence>
+                    )}
 
                     <div className="mt-12 pt-6 border-t border-gray-100 flex items-center gap-2 text-gray-300 justify-center">
                         <Lock size={12} />

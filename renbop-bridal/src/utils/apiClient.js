@@ -13,8 +13,10 @@ const refreshAccessToken = async () => {
     try {
         const response = await fetch(`${BASE_URL}/auth/refresh`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refreshToken }),
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${refreshToken}`
+            },
         });
 
         if (!response.ok) {

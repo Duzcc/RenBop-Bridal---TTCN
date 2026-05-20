@@ -6,6 +6,7 @@ import {
     Loader2, RefreshCw, Scissors, ChevronDown, X,
     Calendar, CheckCircle2, Package, Search, Plus
 } from 'lucide-react';
+import Pagination from '../../components/admin/Pagination';
 
 /* ─── Status Config (16-Week Cycle) ─────────────────────────────── */
 const STATUS_FLOW = ['MEASURED', 'CUTTING', 'SEWING', 'FITTING', 'DONE'];
@@ -93,6 +94,8 @@ const ManageTailoringOrders = () => {
     const [search, setSearch]       = useState('');
     const [viewMode, setViewMode]   = useState('KANBAN'); // 'TABLE' | 'KANBAN'
     const [draggedOrder, setDraggedOrder] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
 
     // Internal note state
     const [noteText, setNoteText]   = useState('');
@@ -103,6 +106,14 @@ const ManageTailoringOrders = () => {
     const [savingDeadline, setSavingDeadline] = useState(false);
 
     useEffect(() => { fetchAll(); }, []);
+
+    useEffect(() => {
+        if (selected) {
+            setNoteText(selected.notes || '');
+        } else {
+            setNoteText('');
+        }
+    }, [selected]);
 
     const fetchAll = async () => {
         setLoading(true);
@@ -124,8 +135,9 @@ const ManageTailoringOrders = () => {
                 body: JSON.stringify({ status: newStatus }),
             });
             if (res.success) {
-                setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
-                if (selected?.id === id) setSelected(s => ({ ...s, status: newStatus }));
+                const updatedDto = res.data;
+                setOrders(prev => prev.map(o => o.id === id ? updatedDto : o));
+                if (selected?.id === id) setSelected(updatedDto);
                 showToast(`✅ Cập nhật → ${STATUS_CONFIG[newStatus]?.label}`);
             }
         } catch (err) {
@@ -141,12 +153,12 @@ const ManageTailoringOrders = () => {
         try {
             const res = await apiClient(`/tailoring-orders/${selected.id}`, {
                 method: 'PUT',
-                body: JSON.stringify({ status: selected.status, internalNote: noteText })
+                body: JSON.stringify({ status: selected.status, notes: noteText })
             });
             if (res.success) {
-                const updated = { ...selected, internalNote: noteText };
-                setOrders(prev => prev.map(o => o.id === selected.id ? updated : o));
-                setSelected(updated);
+                const updatedDto = res.data;
+                setOrders(prev => prev.map(o => o.id === selected.id ? updatedDto : o));
+                setSelected(updatedDto);
                 showToast('✅ Đã lưu ghi chú nội bộ');
             }
         } catch (err) { showToast(`❌ Lỗi: ${err.message}`); }
@@ -159,12 +171,12 @@ const ManageTailoringOrders = () => {
         try {
             const res = await apiClient(`/tailoring-orders/${selected.id}`, {
                 method: 'PUT',
-                body: JSON.stringify({ status: selected.status, estimatedCompletionDate: new Date(deadlineVal).toISOString() })
+                body: JSON.stringify({ status: selected.status, expectedCompletionDate: deadlineVal })
             });
             if (res.success) {
-                const updated = { ...selected, estimatedCompletionDate: deadlineVal };
-                setOrders(prev => prev.map(o => o.id === selected.id ? updated : o));
-                setSelected(updated);
+                const updatedDto = res.data;
+                setOrders(prev => prev.map(o => o.id === selected.id ? updatedDto : o));
+                setSelected(updatedDto);
                 setDeadlineEdit(false);
                 showToast('✅ Đã cập nhật ngày dự kiến');
             }
@@ -176,6 +188,9 @@ const ManageTailoringOrders = () => {
         .filter(o => filterStatus === 'ALL' || o.status === filterStatus)
         .filter(o => !search || [o.customerName, o.productName, o.productSku, String(o.id), String(o.orderId)]
             .some(v => v?.toLowerCase().includes(search.toLowerCase()))), [orders, filterStatus, search]);
+
+    const totalPages = Math.ceil(filtered.length / itemsPerPage);
+    const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     const stats = useMemo(() => {
         const s = {};
@@ -213,14 +228,14 @@ const ManageTailoringOrders = () => {
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-[#f4f4f8] bg-white">
                     <div className="relative flex-[2] max-w-sm">
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9999b0]" />
-                        <input value={search} onChange={e => setSearch(e.target.value)}
+                        <input value={search} onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
                             placeholder="Tìm cô dâu, sản phẩm, mã phiếu..."
                             className="w-full pl-8 pr-3 py-1.5 bg-[#f8f8fc] border border-transparent rounded-lg text-[13px] outline-none focus:border-[#c9a96e] focus:bg-white transition-all" />
                     </div>
                     <div className="h-5 w-px bg-[#e8e8f0]" />
                     <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
                         {['ALL', ...STATUS_FLOW].map(s => (
-                            <button key={s} onClick={() => setFilter(s)}
+                            <button key={s} onClick={() => { setFilter(s); setCurrentPage(1); }}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold transition-all whitespace-nowrap ${filterStatus === s ? 'bg-[#f4f4f8] text-[#0d0e17]' : 'text-[#6b6b80] hover:bg-[#f8f8fc]'}`}>
                                 {s === 'ALL' ? 'Tất cả' : STATUS_CONFIG[s].label}
                                 <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-black ${filterStatus === s ? 'bg-[#e8e8f0] text-[#0d0e17]' : 'bg-[#f4f4f8] text-[#9999b0]'}`}>
@@ -251,7 +266,7 @@ const ManageTailoringOrders = () => {
                                 <tr><td colSpan="7" className="py-16 text-center"><Loader2 className="animate-spin mx-auto text-[#c9a96e]" size={24} /></td></tr>
                             ) : filtered.length === 0 ? (
                                 <tr><td colSpan="7" className="py-16 text-center text-[#9999b0] font-medium text-[13px]">Không có phiếu may đo nào.</td></tr>
-                            ) : filtered.map(o => {
+                            ) : paginated.map(o => {
                                 const idx = STATUS_FLOW.indexOf(o.status);
                                 const progress = Math.round(((idx + 1) / STATUS_FLOW.length) * 100);
                                 const cfg = STATUS_CONFIG[o.status] || {};
@@ -306,9 +321,15 @@ const ManageTailoringOrders = () => {
                                                     <div className="relative inline-block">
                                                         <select value={o.status} onChange={e => handleStatusUpdate(o.id, e.target.value)}
                                                             className="appearance-none bg-[#f4f4f8] border border-[#e8e8f0] rounded-md text-[11px] font-bold px-2 py-1 pr-6 outline-none focus:border-[#c9a96e] cursor-pointer hover:bg-[#e8e8f0] transition-colors text-[#0d0e17]">
-                                                            {STATUS_FLOW.map(s => (
-                                                                <option key={s} value={s}>{STATUS_CONFIG[s].label}</option>
-                                                            ))}
+                                                            {STATUS_FLOW.map(s => {
+                                                                const isCurrent = o.status === s;
+                                                                const isAllowed = o.allowedNextStatuses?.includes(s);
+                                                                return (
+                                                                    <option key={s} value={s} disabled={!isCurrent && !isAllowed}>
+                                                                        {STATUS_CONFIG[s].label}
+                                                                    </option>
+                                                                );
+                                                            })}
                                                         </select>
                                                         <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-[#6b6b80] pointer-events-none" />
                                                     </div>
@@ -325,9 +346,9 @@ const ManageTailoringOrders = () => {
                 )}
                 
                 {viewMode === 'KANBAN' && (
-                    <div className="flex-1 overflow-x-auto admin-scroll flex gap-5 pb-2">
+                    <div className="flex-1 overflow-x-auto admin-scroll flex gap-5 pb-2 p-4">
                         {STATUS_FLOW.map(status => {
-                            const columnOrders = filtered.filter(o => o.status === status);
+                            const columnOrders = paginated.filter(o => o.status === status);
                             const cfg = STATUS_CONFIG[status];
                             
                             return (
@@ -336,7 +357,11 @@ const ManageTailoringOrders = () => {
                                     onDrop={(e) => {
                                         e.preventDefault();
                                         if (draggedOrder && draggedOrder.status !== status) {
-                                            handleStatusUpdate(draggedOrder.id, status);
+                                            if (draggedOrder.allowedNextStatuses?.includes(status)) {
+                                                handleStatusUpdate(draggedOrder.id, status);
+                                            } else {
+                                                showToast(`⚠️ Không thể chuyển từ ${STATUS_CONFIG[draggedOrder.status]?.label} sang ${STATUS_CONFIG[status]?.label}`);
+                                            }
                                         }
                                         setDraggedOrder(null);
                                     }}>
@@ -395,6 +420,13 @@ const ManageTailoringOrders = () => {
                                 </div>
                             );
                         })}
+                    </div>
+                )}
+                
+                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+                {!loading && (
+                    <div className="px-6 py-3 border-t border-[#e8e8f0] text-[11px] font-bold text-[#9999b0] bg-white uppercase tracking-wider flex justify-between items-center">
+                        <div>Hiển thị <span className="text-[#0d0e17]">{filtered.length}</span> phiếu</div>
                     </div>
                 )}
             </div>
@@ -539,9 +571,9 @@ const ManageTailoringOrders = () => {
                                     {savingNote && <Loader2 size={13} className="animate-spin" />}
                                     Lưu ghi chú
                                 </button>
-                                {selected.internalNote && (
+                                {selected.notes && (
                                     <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-[12px] text-amber-800 font-medium italic">
-                                        Hiện tại: "{selected.internalNote}"
+                                        Hiện tại: "{selected.notes}"
                                     </div>
                                 )}
                             </div>
@@ -565,11 +597,11 @@ const ManageTailoringOrders = () => {
                                 ) : (
                                     <div className="flex items-center justify-between">
                                         <span className="text-[13px] font-bold text-[#0d0e17]">
-                                            {selected.estimatedCompletionDate
-                                                ? new Date(selected.estimatedCompletionDate).toLocaleDateString('vi-VN')
+                                            {selected.expectedCompletionDate
+                                                ? new Date(selected.expectedCompletionDate).toLocaleDateString('vi-VN')
                                                 : <span className="text-[#9999b0] font-medium">Chưa đặt ngày</span>}
                                         </span>
-                                        <button onClick={() => { setDeadlineEdit(true); setDeadlineVal(selected.estimatedCompletionDate?.slice(0,10) || ''); }}
+                                        <button onClick={() => { setDeadlineEdit(true); setDeadlineVal(selected.expectedCompletionDate?.slice(0,10) || ''); }}
                                             className="text-[11px] font-bold px-3 py-1.5 bg-[#f4f4f8] hover:bg-[#c9a96e]/10 hover:text-[#c9a96e] rounded-lg transition-colors">
                                             ✏️ Sửa ngày
                                         </button>

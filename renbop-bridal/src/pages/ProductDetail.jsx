@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { apiClient } from '../utils/apiClient';
@@ -97,7 +97,7 @@ const ProductDetail = () => {
             rentalStartDate: orderType === 'RENTAL' ? rentalDates.start : null,
             rentalEndDate: orderType === 'RENTAL' ? rentalDates.end : null,
             notes: notes,
-            price: product.price || product.basePrice || 0,
+            price: product.salePrice || product.price || product.basePrice || 0,
             measurements: orderType === 'TAILORING' ? measurements : null
         };
 
@@ -326,7 +326,7 @@ const ProductDetail = () => {
                                     />
                                 </div>
                                 <h3 className="font-serif text-base text-charcoal">{p.name}</h3>
-                                <p className="text-xs text-gray-500">{p.price.toLocaleString()} VND</p>
+                                <p className="text-xs text-gray-500">{(p.salePrice || p.price || p.basePrice || 0).toLocaleString()} VND</p>
                             </Link>
                         ))}
                     </div>
