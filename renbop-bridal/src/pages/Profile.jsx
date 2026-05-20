@@ -70,11 +70,23 @@ const MeasurementCard = ({ data }) => {
     );
 };
 
+const FITTING_STATUS_MAP = {
+    SCHEDULED: { label: 'Đã lên lịch', color: 'bg-amber-50 text-amber-800 border-amber-200' },
+    COMPLETED: { label: 'Đã thử xong', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+    CANCELLED: { label: 'Đã hủy', color: 'bg-red-50 text-red-800 border-red-200' }
+};
+
 const Profile = () => {
     const { user, logout, set2FaEnabledState } = useAuth();
     const [measurements, setMeasurements] = useState([]);
     const [measureLoading, setMeasureLoading] = useState(true);
     const [showMeasure, setShowMeasure] = useState(false);
+    
+    // Dynamic Stats and Fittings
+    const [ordersCount, setOrdersCount] = useState(0);
+    const [fittings, setFittings] = useState([]);
+    const [fittingsLoading, setFittingsLoading] = useState(true);
+    const [showFittings, setShowFittings] = useState(false);
     
     // Security States
     const [showSecurity, setShowSecurity] = useState(false);
@@ -88,7 +100,8 @@ const Profile = () => {
 
     useEffect(() => {
         if (!user?.id) return;
-        const fetch = async () => {
+        
+        const fetchMeasurements = async () => {
             try {
                 const res = await apiClient(`/measurements/user/${user.id}`);
                 if (res?.data) setMeasurements(res.data);
@@ -98,7 +111,34 @@ const Profile = () => {
                 setMeasureLoading(false);
             }
         };
-        fetch();
+
+        const fetchOrders = async () => {
+            try {
+                const res = await apiClient('/orders/me');
+                if (res?.success) {
+                    setOrdersCount(res.data?.totalElements ?? res.data?.content?.length ?? (Array.isArray(res.data) ? res.data.length : 0));
+                }
+            } catch {
+                // error fetching orders
+            }
+        };
+
+        const fetchFittings = async () => {
+            try {
+                const res = await apiClient('/fitting-sessions/me');
+                if (res?.success) {
+                    setFittings(res.data || []);
+                }
+            } catch {
+                // error fetching fittings
+            } finally {
+                setFittingsLoading(false);
+            }
+        };
+
+        fetchMeasurements();
+        fetchOrders();
+        fetchFittings();
     }, [user?.id]);
 
     const femaleMeasurements = measurements.filter(m => m.gender !== 'MALE');
@@ -170,17 +210,99 @@ const Profile = () => {
 
                     {/* Stats */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                        {[
-                            { icon: ShoppingBag, label: 'Đơn hàng', value: '0' },
-                            { icon: Calendar, label: 'Lịch hẹn thử đồ', value: '0' },
-                            { icon: Ruler, label: 'Số đo', value: measurements.length },
-                        ].map(({ icon: Icon, label, value }) => (
-                            <div key={label} className="glass rounded-xl p-5 text-center">
-                                <Icon size={22} className="text-champagne mx-auto mb-2" strokeWidth={1.5} />
-                                <p className="font-serif text-2xl text-charcoal">{value}</p>
-                                <p className="text-xs text-charcoal-light font-sans mt-1">{label}</p>
+                        <Link to="/orders" className="glass rounded-xl p-5 text-center block hover:border-champagne hover:shadow-md transition-all duration-300">
+                            <ShoppingBag size={22} className="text-champagne mx-auto mb-2" strokeWidth={1.5} />
+                            <p className="font-serif text-2xl text-charcoal">{ordersCount}</p>
+                            <p className="text-xs text-charcoal-light font-sans mt-1">Đơn hàng</p>
+                        </Link>
+                        <button onClick={() => { setShowFittings(!showFittings); setShowMeasure(false); }} className="glass rounded-xl p-5 text-center block w-full hover:border-champagne hover:shadow-md transition-all duration-300">
+                            <Calendar size={22} className="text-champagne mx-auto mb-2" strokeWidth={1.5} />
+                            <p className="font-serif text-2xl text-charcoal">{fittings.length}</p>
+                            <p className="text-xs text-charcoal-light font-sans mt-1">Lịch hẹn thử đồ</p>
+                        </button>
+                        <button onClick={() => { setShowMeasure(!showMeasure); setShowFittings(false); }} className="glass rounded-xl p-5 text-center block w-full hover:border-champagne hover:shadow-md transition-all duration-300">
+                            <Ruler size={22} className="text-champagne mx-auto mb-2" strokeWidth={1.5} />
+                            <p className="font-serif text-2xl text-charcoal">{measurements.length}</p>
+                            <p className="text-xs text-charcoal-light font-sans mt-1">Số đo</p>
+                        </button>
+                    </div>
+
+                    {/* Fitting Sessions (Appointments) */}
+                    <div className="glass rounded-2xl mb-6 overflow-hidden">
+                        <button
+                            onClick={() => setShowFittings(!showFittings)}
+                            className="w-full flex items-center justify-between p-6 hover:bg-white/10 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <Calendar size={20} className="text-champagne" strokeWidth={1.5} />
+                                <h3 className="font-serif text-lg text-charcoal">Lịch hẹn thử váy của tôi</h3>
+                                {fittings.length > 0 && (
+                                    <span className="text-xs bg-champagne/20 text-champagne px-2 py-0.5 rounded-full font-sans">
+                                        {fittings.length} buổi hẹn
+                                    </span>
+                                )}
                             </div>
-                        ))}
+                            {showFittings ? <ChevronUp size={18} className="text-charcoal-light" /> : <ChevronDown size={18} className="text-charcoal-light" />}
+                        </button>
+
+                        <AnimatePresence initial={false}>
+                            {showFittings && (
+                                <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.3 }}
+                                >
+                                    <div className="px-6 pb-6">
+                                        {fittingsLoading ? (
+                                            <div className="text-center py-8 text-charcoal-light font-sans text-sm">Đang tải...</div>
+                                        ) : fittings.length === 0 ? (
+                                            <div className="text-center py-8">
+                                                <div className="w-16 h-16 bg-champagne/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                                                    <Calendar size={28} className="text-champagne/60" strokeWidth={1.5} />
+                                                </div>
+                                                <p className="text-sm text-charcoal-light font-sans mb-1">Chưa có lịch hẹn thử váy</p>
+                                                <p className="text-xs text-charcoal-light/60 font-sans">Lịch thử váy sẽ được lên khi bạn đặt may hoặc thuê váy cưới tại Renbop Bridal</p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                {fittings.map((fit) => {
+                                                    const statusCfg = FITTING_STATUS_MAP[fit.status] || { label: fit.status, color: 'bg-gray-100 text-gray-800' };
+                                                    return (
+                                                        <div key={fit.id} className="bg-white/50 border border-white/60 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                                            <div className="space-y-1">
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                    <span className="font-serif text-base text-charcoal">Hẹn thử váy: {fit.productName || 'Váy cưới'}</span>
+                                                                    <span className={`text-[10px] font-sans font-bold px-2 py-0.5 rounded-full border ${statusCfg.color}`}>
+                                                                        {statusCfg.label}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-xs text-charcoal-light font-sans">
+                                                                    Thời gian: <span className="font-semibold text-charcoal">{new Date(fit.fittingDate).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                                                                </p>
+                                                                {fit.staffName && (
+                                                                    <p className="text-xs text-charcoal-light font-sans">
+                                                                        Nhân viên phụ trách: <span className="font-semibold text-charcoal">{fit.staffName}</span>
+                                                                    </p>
+                                                                )}
+                                                                {fit.notes && (
+                                                                    <p className="text-xs text-charcoal-light font-sans italic mt-1">
+                                                                        Ghi chú: "{fit.notes}"
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-xs text-charcoal-light font-sans bg-champagne/10 text-champagne px-3 py-1.5 rounded-lg border border-champagne/20 self-start sm:self-center">
+                                                                Mã lịch hẹn: #{fit.id}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
 
                     {/* Measurements */}

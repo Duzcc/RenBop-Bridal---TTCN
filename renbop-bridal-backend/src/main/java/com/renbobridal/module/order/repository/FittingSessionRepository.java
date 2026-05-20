@@ -14,6 +14,10 @@ public interface FittingSessionRepository extends JpaRepository<FittingSession, 
     List<FittingSession> findByTailoringOrderId(Long tailoringOrderId);
     List<FittingSession> findByStaffId(Long staffId);
 
+    @Query("SELECT f FROM FittingSession f " +
+           "WHERE f.tailoringOrder.orderItem.order.customer.id = :customerId")
+    List<FittingSession> findByCustomerId(@Param("customerId") Long customerId);
+
     /** Đếm lịch thử đồ sắp tới (SCHEDULED) trong khoảng thời gian */
     @Query("SELECT COUNT(f) FROM FittingSession f " +
            "WHERE f.status = com.renbobridal.module.order.entity.FittingSession.Status.SCHEDULED " +

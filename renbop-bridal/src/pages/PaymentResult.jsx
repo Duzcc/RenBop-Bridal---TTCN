@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { CheckCircle, XCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useCart } from '../context/CartContext';
 
 const PaymentResult = () => {
     const [searchParams] = useSearchParams();
     const [status, setStatus] = useState('loading');
+    const { clearCart } = useCart();
 
     const success = searchParams.get('success');
     const orderId = searchParams.get('orderId');
@@ -13,10 +15,11 @@ const PaymentResult = () => {
     useEffect(() => {
         if (success === 'true') {
             setStatus('success');
+            clearCart();
         } else {
             setStatus('error');
         }
-    }, [success]);
+    }, [success, clearCart]);
 
     if (status === 'loading') {
         return <div className="min-h-screen flex items-center justify-center bg-ivory">Đang xử lý kết quả thanh toán...</div>;

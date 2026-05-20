@@ -5,12 +5,15 @@ import { Package, ChevronRight, Loader2, ShoppingBag } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const STATUS_MAP = {
-    PENDING:   { label: 'Chờ thanh toán', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-    CONFIRMED: { label: 'Đã xác nhận',   color: 'bg-blue-100 text-blue-700 border-blue-200' },
-    SHIPPED:   { label: 'Đang giao',     color: 'bg-purple-100 text-purple-700 border-purple-200' },
-    DELIVERED: { label: 'Đã giao hàng', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-    CANCELLED: { label: 'Đã hủy',        color: 'bg-red-100 text-red-700 border-red-200' },
+    PENDING:     { label: 'Chờ thanh toán', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+    CONFIRMED:   { label: 'Đã xác nhận',   color: 'bg-blue-100 text-blue-700 border-blue-200' },
+    SHIPPED:     { label: 'Đang giao',     color: 'bg-purple-100 text-purple-700 border-purple-200' },
+    DELIVERED:   { label: 'Đã giao hàng', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+    CANCELLED:   { label: 'Đã hủy',        color: 'bg-red-100 text-red-700 border-red-200' },
+    IN_PROGRESS: { label: 'Đang thực hiện', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+    COMPLETED:   { label: 'Đã hoàn thành', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
 };
+
 
 const OrderHistory = () => {
     const [orders, setOrders]   = useState([]);
@@ -21,7 +24,7 @@ const OrderHistory = () => {
     useEffect(() => {
         const fetchOrders = async () => {
             try {
-                const res = await apiClient('/orders/my');
+                const res = await apiClient('/orders/me');
                 if (res.success) setOrders(res.data?.content || res.data || []);
             } catch (err) {
                 setError('Không thể tải lịch sử đơn hàng. Vui lòng thử lại.');
@@ -62,7 +65,7 @@ const OrderHistory = () => {
             </div>
 
             {orders.map((order, idx) => {
-                const cfg  = STATUS_MAP[order.status] || {};
+                const cfg  = STATUS_MAP[order.status] || { label: order.status || 'Chưa rõ', color: 'bg-gray-100 text-gray-700 border-gray-200' };
                 const open = expanded === order.id;
 
                 return (

@@ -203,6 +203,18 @@ const Checkout = () => {
                 });
                 if (res.success) {
                     setPayment(res.data);
+                    if (paymentMethod === 'COD') {
+                        // Tự động xác nhận thanh toán cho COD
+                        const confirmRes = await apiClient(
+                            `/orders/${createdOrder.id}/payments/${res.data.id}/confirm?success=true`,
+                            { method: 'POST' }
+                        );
+                        if (confirmRes.success) {
+                            setPayment(confirmRes.data || res.data);
+                            setPaymentDone(true);
+                            clearCart();
+                        }
+                    }
                     setStep(3);
                 }
             }

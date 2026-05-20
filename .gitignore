@@ -26,6 +26,8 @@ target/
 .env
 .env.local
 .env.*.local
+*.backup
+*.local.backup
 
 # Logs
 logs

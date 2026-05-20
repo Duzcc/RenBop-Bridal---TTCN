@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,6 +23,13 @@ import java.util.List;
 public class FittingSessionController {
 
     private final FittingSessionService fittingSessionService;
+
+    @GetMapping("/me")
+    @Operation(summary = "Get current user's scheduled fitting sessions")
+    public ResponseEntity<ApiResponse<List<FittingSessionDto>>> getMyFittingSessions(
+            @AuthenticationPrincipal Long userId) {
+        return ResponseEntity.ok(ApiResponse.ok(fittingSessionService.getFittingSessionsByCustomerId(userId)));
+    }
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")

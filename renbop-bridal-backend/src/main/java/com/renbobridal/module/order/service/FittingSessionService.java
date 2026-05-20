@@ -44,6 +44,13 @@ public class FittingSessionService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<FittingSessionDto> getFittingSessionsByCustomerId(Long customerId) {
+        return fittingSessionRepository.findByCustomerId(customerId).stream()
+                .map(this::mapToDto)
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public FittingSessionDto createFittingSession(Long tailoringOrderId, FittingSessionRequest request, Long staffId) {
         TailoringOrder tailoringOrder = tailoringOrderRepository.findById(tailoringOrderId)

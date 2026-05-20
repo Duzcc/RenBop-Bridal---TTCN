@@ -29,6 +29,34 @@ const ProductDetail = () => {
         armLength: ''
     });
 
+    const [isBookingOpen, setIsBookingOpen] = useState(false);
+    const [bookingForm, setBookingForm] = useState({
+        fullName: '',
+        phone: '',
+        date: '',
+        time: '',
+        notes: ''
+    });
+    const [bookingSuccess, setBookingSuccess] = useState(false);
+
+    useEffect(() => {
+        if (product) {
+            setBookingForm(prev => ({
+                ...prev,
+                notes: `Đăng ký thử mẫu váy: ${product.name}`
+            }));
+        }
+    }, [product]);
+
+    const handleBookAppointment = (e) => {
+        e.preventDefault();
+        if (!bookingForm.fullName || !bookingForm.phone || !bookingForm.date || !bookingForm.time) {
+            alert('Vui lòng điền đầy đủ thông tin bắt buộc.');
+            return;
+        }
+        setBookingSuccess(true);
+    };
+
     useEffect(() => {
         const fetchProductData = async () => {
             setLoading(true);
@@ -276,7 +304,13 @@ const ProductDetail = () => {
                                     Add to Bag
                                 </button>
 
-                                <button className="w-full flex items-center justify-center gap-2 py-3 border border-charcoal text-charcoal font-sans text-xs font-bold uppercase tracking-widest hover:bg-gray-50 transition-colors">
+                                <button 
+                                    onClick={() => {
+                                        setIsBookingOpen(true);
+                                        setBookingSuccess(false);
+                                    }}
+                                    className="w-full flex items-center justify-center gap-2 py-3 border border-charcoal text-charcoal font-sans text-xs font-bold uppercase tracking-widest hover:bg-gray-50 transition-colors"
+                                >
                                     <Calendar size={16} />
                                     Book an Appointment
                                 </button>
@@ -332,6 +366,138 @@ const ProductDetail = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Appointment Booking Modal */}
+            <AnimatePresence>
+                {isBookingOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm font-sans"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-white max-w-lg w-full p-8 relative border border-charcoal/5 shadow-2xl"
+                        >
+                            <button
+                                onClick={() => setIsBookingOpen(false)}
+                                className="absolute top-6 right-6 text-gray-400 hover:text-charcoal transition-colors font-sans text-lg font-bold"
+                            >
+                                ✕
+                            </button>
+
+                            {!bookingSuccess ? (
+                                <form onSubmit={handleBookAppointment} className="space-y-6">
+                                    <div className="text-center mb-8">
+                                        <span className="font-sans text-xs font-bold tracking-[0.2em] text-champagne uppercase mb-2 block">
+                                            Fitting Session
+                                        </span>
+                                        <h2 className="font-serif text-3xl text-charcoal italic">Đặt Lịch Thử Váy</h2>
+                                        <p className="text-xs text-gray-500 font-sans mt-2">
+                                            Trải nghiệm không gian thử đồ riêng tư & dịch vụ tư vấn cao cấp tại Renbop Bridal.
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                required
+                                                value={bookingForm.fullName}
+                                                onChange={(e) => setBookingForm({ ...bookingForm, fullName: e.target.value })}
+                                                className="w-full py-3 bg-transparent border-b border-gray-300 focus:border-charcoal focus:outline-none transition-colors text-sm placeholder-gray-400 font-sans text-charcoal"
+                                                placeholder="Họ và Tên *"
+                                            />
+                                        </div>
+
+                                        <div className="relative">
+                                            <input
+                                                type="tel"
+                                                required
+                                                value={bookingForm.phone}
+                                                onChange={(e) => setBookingForm({ ...bookingForm, phone: e.target.value })}
+                                                className="w-full py-3 bg-transparent border-b border-gray-300 focus:border-charcoal focus:outline-none transition-colors text-sm placeholder-gray-400 font-sans text-charcoal"
+                                                placeholder="Số Điện Thoại *"
+                                            />
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-[10px] text-gray-400 uppercase tracking-widest mb-1 block font-sans font-bold">Ngày Hẹn *</label>
+                                                <input
+                                                    type="date"
+                                                    required
+                                                    value={bookingForm.date}
+                                                    onChange={(e) => setBookingForm({ ...bookingForm, date: e.target.value })}
+                                                    className="w-full p-3 border border-gray-200 text-sm focus:border-charcoal outline-none font-sans text-charcoal bg-transparent"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] text-gray-400 uppercase tracking-widest mb-1 block font-sans font-bold">Giờ Hẹn *</label>
+                                                <select
+                                                    required
+                                                    value={bookingForm.time}
+                                                    onChange={(e) => setBookingForm({ ...bookingForm, time: e.target.value })}
+                                                    className="w-full p-3 border border-gray-200 text-sm focus:border-charcoal outline-none font-sans bg-white text-charcoal"
+                                                >
+                                                    <option value="">Chọn giờ...</option>
+                                                    {['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'].map(t => (
+                                                        <option key={t} value={t}>{t}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-[10px] text-gray-400 uppercase tracking-widest mb-1 block font-sans font-bold">Ghi chú & Yêu cầu riêng</label>
+                                            <textarea
+                                                rows="3"
+                                                value={bookingForm.notes}
+                                                onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })}
+                                                className="w-full p-3 border border-gray-200 text-sm focus:border-charcoal outline-none resize-none transition-colors font-sans text-charcoal bg-transparent"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        className="w-full py-4 bg-charcoal text-white font-sans text-xs font-bold uppercase tracking-[0.2em] hover:bg-champagne transition-colors duration-300 shadow-lg mt-6"
+                                    >
+                                        Xác Nhận Đặt Lịch
+                                    </button>
+                                </form>
+                            ) : (
+                                <div className="text-center py-8 space-y-6">
+                                    <div className="w-16 h-16 bg-[#c9a96e]/10 text-champagne rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <Calendar size={28} />
+                                    </div>
+                                    <h3 className="font-serif text-2xl text-charcoal italic">Đặt Lịch Thành Công!</h3>
+                                    <div className="space-y-3 font-sans text-sm text-gray-500 leading-relaxed px-4 text-center">
+                                        <p>
+                                            Cảm ơn quý khách <strong>{bookingForm.fullName}</strong> đã đặt lịch thử váy <strong>{product.name}</strong> tại Renbop Bridal.
+                                        </p>
+                                        <p>
+                                            Lịch hẹn của bạn: <strong className="text-charcoal">{bookingForm.date} vào lúc {bookingForm.time}</strong>.
+                                        </p>
+                                        <p className="text-xs text-champagne italic bg-[#c9a96e]/5 py-2 px-3 border border-[#c9a96e]/10 inline-block mt-2">
+                                            Chuyên viên tư vấn của chúng tôi sẽ gọi điện xác nhận lịch qua số điện thoại <strong>{bookingForm.phone}</strong> trong vòng 15 phút.
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => setIsBookingOpen(false)}
+                                        className="mt-6 px-10 py-3 bg-charcoal text-white font-sans text-xs font-bold uppercase tracking-widest hover:bg-champagne transition-colors"
+                                    >
+                                        Đóng
+                                    </button>
+                                </div>
+                            )}
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
