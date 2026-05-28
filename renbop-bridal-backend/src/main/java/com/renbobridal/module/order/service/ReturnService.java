@@ -101,7 +101,15 @@ public class ReturnService {
             if (returnDateLocal.isAfter(maxEndDate)) {
                 status = Return.Status.LATE;
                 long daysLate = ChronoUnit.DAYS.between(maxEndDate, returnDateLocal);
-                lateFee = DAILY_LATE_FEE.multiply(BigDecimal.valueOf(daysLate));
+                
+                if (daysLate <= 3) {
+                    lateFee = new BigDecimal("50000").multiply(BigDecimal.valueOf(daysLate));
+                } else if (daysLate <= 7) {
+                    lateFee = new BigDecimal("100000").multiply(BigDecimal.valueOf(daysLate));
+                } else {
+                    lateFee = new BigDecimal("200000").multiply(BigDecimal.valueOf(daysLate));
+                }
+                
                 log.info("[RETURN] orderId={} late by {} day(s), lateFee={}", orderId, daysLate, lateFee);
             }
         }
@@ -170,7 +178,13 @@ public class ReturnService {
                 LocalDate returnDateLocal = LocalDate.ofInstant(request.getReturnDate(), VN_ZONE);
                 if (returnDateLocal.isAfter(maxEndDate)) {
                     long daysLate = ChronoUnit.DAYS.between(maxEndDate, returnDateLocal);
-                    returnRecord.setLateFee(DAILY_LATE_FEE.multiply(BigDecimal.valueOf(daysLate)));
+                    if (daysLate <= 3) {
+                        returnRecord.setLateFee(new BigDecimal("50000").multiply(BigDecimal.valueOf(daysLate)));
+                    } else if (daysLate <= 7) {
+                        returnRecord.setLateFee(new BigDecimal("100000").multiply(BigDecimal.valueOf(daysLate)));
+                    } else {
+                        returnRecord.setLateFee(new BigDecimal("200000").multiply(BigDecimal.valueOf(daysLate)));
+                    }
                 } else {
                     returnRecord.setLateFee(BigDecimal.ZERO);
                 }
@@ -245,6 +259,7 @@ public class ReturnService {
                 .description(damage.getDescription())
                 .repairCost(damage.getRepairCost())
                 .chargedToCustomer(damage.getChargedToCustomer())
+                .severity(damage.getSeverity() != null ? damage.getSeverity().name() : null)
                 .build();
     }
 }

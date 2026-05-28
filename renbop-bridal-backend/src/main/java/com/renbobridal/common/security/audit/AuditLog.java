@@ -37,8 +37,24 @@ public class AuditLog {
     @Column(name = "details", columnDefinition = "TEXT")
     private String details;
 
+    @Column(name = "previous_value", columnDefinition = "TEXT")
+    private String previousValue; // JSON snapshot before change
+
+    @Column(name = "new_value", columnDefinition = "TEXT")
+    private String newValue; // JSON snapshot after change
+
     @Column(name = "ip_address")
     private String ipAddress;
+
+    @Builder.Default
+    @Column(name = "is_reverted")
+    private Boolean isReverted = false;
+
+    @Column(name = "reverted_by")
+    private Long revertedBy;
+
+    @Column(name = "reverted_at")
+    private Instant revertedAt;
 
     @CreatedDate
     @Column(name = "created_at", updatable = false)

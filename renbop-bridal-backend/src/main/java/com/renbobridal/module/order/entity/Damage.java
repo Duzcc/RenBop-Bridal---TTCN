@@ -41,6 +41,15 @@ public class Damage {
     @Builder.Default
     private Boolean chargedToCustomer = true;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "severity", nullable = false)
+    @Builder.Default
+    private Severity severity = Severity.MINOR;
+
+    public enum Severity {
+        MINOR, MODERATE, SEVERE, LOST
+    }
+
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;

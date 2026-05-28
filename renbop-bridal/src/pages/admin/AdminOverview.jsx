@@ -1,15 +1,18 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { apiClient } from '../../utils/apiClient';
 import {
     Users, Package, ShoppingBag, DollarSign,
     ArrowUpRight, TrendingUp, ChevronRight, Calendar,
     AlertCircle, Clock, CheckCircle2, BellRing, ArrowRight,
-    ClipboardList
+    ClipboardList, RefreshCw, Filter, FileDown, Loader2
 } from 'lucide-react';
 import {
     AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell
 } from 'recharts';
+import DateFilter from '../../components/admin/DateFilter';
+import { useApiCache } from '../../utils/useApiCache';
+import { exportDashboardPDF } from '../../utils/exportPDF';
 
 /* ── Mock data ── */
 const STATUS_COLORS = {
@@ -69,33 +72,58 @@ const SkeletonDashboard = () => (
 
 /* ── Main Component ── */
 const AdminOverview = () => {
-    const [stats, setStats] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [revenuePeriod, setRevenuePeriod] = useState(7);
+    const [fromDate, setFromDate] = useState('');
+    const [toDate, setToDate] = useState('');
+    const [exporting, setExporting] = useState(false);
+
+    const handleExportPDF = async () => {
+        setExporting(true);
+        try {
+            await exportDashboardPDF('dashboard-content', { title: 'Báo cáo Tổng quan', fromDate, toDate });
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    const statsEndpoint = useMemo(() => {
+        const params = new URLSearchParams();
+        if (fromDate) params.append('from', new Date(fromDate).toISOString());
+        if (toDate) params.append('to', new Date(toDate).toISOString());
+        return `/admin/dashboard?${params.toString()}`;
+    }, [fromDate, toDate]);
+
+    const chartEndpoint = useMemo(() => {
+        const params = new URLSearchParams();
+        if (fromDate && toDate) {
+            params.append('from', new Date(fromDate).toISOString());
+            params.append('to', new Date(toDate).toISOString());
+        } else {
+            params.append('period', revenuePeriod);
+        }
+        return `/admin/dashboard/revenue-chart?${params.toString()}`;
+    }, [revenuePeriod, fromDate, toDate]);
+
+    const { data: statsData, loading: statsLoading } = useApiCache(statsEndpoint);
+    const { data: chartRes, loading: chartLoading } = useApiCache(chartEndpoint);
+
+    const stats = statsData?.data || statsData;
+    const cacheMetrics = stats ? { hit: stats.cacheHit, time: stats.executionTimeMs } : null;
+
     const revenueData = useMemo(() => {
-        if (!stats?.revenueChart) return [];
-        return stats.revenueChart.map(item => {
-            const [, month, day] = item.date.split('-');
+        const cData = chartRes?.data?.chartData || chartRes?.chartData || [];
+        return cData.map(item => {
+            const parts = item.date.split('-');
+            const label = parts.length === 3 ? `${parts[2]}/${parts[1]}` : item.date;
             return {
-                name: `${day}/${month}`,
+                name: label,
                 doanhThu: item.revenue || 0,
                 donHang: item.orderCount || 0
             };
         });
-    }, [stats]);
+    }, [chartRes]);
 
-    useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                const res = await apiClient('/admin/dashboard');
-                if (res.success) setStats(res.data);
-            } catch (err) {
-                console.error('Failed to fetch dashboard stats', err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchStats();
-    }, []);
+    const loading = statsLoading;
 
     const formatCurrency = (val) =>
         new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0);
@@ -120,7 +148,7 @@ const AdminOverview = () => {
     if (loading) return <SkeletonDashboard />;
 
     return (
-        <div className="max-w-[1400px] mx-auto px-6 py-8 space-y-6 font-sans">
+        <div id="dashboard-content" className="max-w-[1400px] mx-auto px-6 py-8 space-y-6 font-sans">
             {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
                 <div>
@@ -130,9 +158,36 @@ const AdminOverview = () => {
                         Hôm nay, {new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
                 </div>
-                <div className="flex items-center gap-2 p-1.5 bg-[#f8f8fc] border border-[#e8e8f0] rounded-2xl">
-                    <button className="px-4 py-2 text-[13px] font-bold bg-white text-[#0d0e17] shadow-sm rounded-xl transition-all">7 ngày qua</button>
-                    <button className="px-4 py-2 text-[13px] font-bold text-[#9999b0] hover:text-[#0d0e17] rounded-xl transition-all">30 ngày qua</button>
+                <div className="flex items-center gap-4">
+                    {cacheMetrics && (
+                        <div className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[11px] font-bold shadow-sm ${cacheMetrics.hit ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                            {cacheMetrics.hit ? <CheckCircle2 size={14} /> : <RefreshCw size={14} />}
+                            {cacheMetrics.hit ? 'Dữ liệu Cache' : 'Dữ liệu Trực tiếp'}
+                            <span className="opacity-60 font-mono">({cacheMetrics.time}ms)</span>
+                        </div>
+                    )}
+                    <button
+                        id="btn-export-pdf"
+                        onClick={handleExportPDF}
+                        disabled={exporting}
+                        className="hidden md:flex items-center gap-2 px-4 py-2 bg-[#0d0e17] hover:bg-black text-white rounded-xl text-[12px] font-bold transition-all shadow-sm disabled:opacity-60"
+                    >
+                        {exporting ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} className="text-[#c9a96e]" />}
+                        {exporting ? 'Đang xuất...' : 'Xuất PDF'}
+                    </button>
+                    <div className="flex items-center bg-white border border-[#e8e8f0] rounded-xl p-1 shadow-sm h-10">
+                        <DateFilter onFilterChange={({ fromDate, toDate }) => { setFromDate(fromDate); setToDate(toDate); }} />
+                    </div>
+                    {(!fromDate && !toDate) && (
+                        <div className="flex items-center gap-1 p-1 bg-[#f8f8fc] border border-[#e8e8f0] rounded-2xl h-10">
+                            {[7, 30, 365].map(days => (
+                                <button key={days} onClick={() => setRevenuePeriod(days)}
+                                    className={`px-4 py-1.5 text-[12px] font-bold rounded-xl transition-all h-full ${revenuePeriod === days ? 'bg-white text-[#0d0e17] shadow-sm' : 'text-[#9999b0] hover:text-[#0d0e17]'}`}>
+                                    {days === 365 ? '1 năm' : `${days} ngày`}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
 

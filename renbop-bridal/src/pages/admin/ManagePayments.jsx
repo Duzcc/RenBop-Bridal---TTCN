@@ -10,6 +10,7 @@ import {
     ArrowUpRight, Download, ExternalLink, ShieldCheck
 } from 'lucide-react';
 import Pagination from '../../components/admin/Pagination';
+import DateFilter from '../../components/admin/DateFilter';
 
 /* ─── Config ─────────────────────────────────────────────────────── */
 const STATUS_CONFIG = {
@@ -37,6 +38,8 @@ const ManagePayments = () => {
     const itemsPerPage = 10;
     const [selected, setSelected] = useState(null);
     const [refunding, setRefunding] = useState(null);
+    const [fromDate, setFromDate] = useState('');
+    const [toDate, setToDate] = useState('');
 
     useEffect(() => { fetchPayments(); }, []);
 
@@ -75,9 +78,19 @@ const ManagePayments = () => {
                 p.customerName?.toLowerCase().includes(q) ||
                 p.transactionId?.toLowerCase().includes(q);
             const matchStatus = filterStatus === 'ALL' || p.status === filterStatus;
-            return matchSearch && matchStatus;
+            
+            let matchDate = true;
+            if (fromDate || toDate) {
+                const pDate = new Date(p.createdAt);
+                if (!isNaN(pDate.getTime())) {
+                    const pDateStr = pDate.toISOString().split('T')[0];
+                    if (fromDate && pDateStr < fromDate) matchDate = false;
+                    if (toDate && pDateStr > toDate) matchDate = false;
+                }
+            }
+            return matchSearch && matchStatus && matchDate;
         }).sort((a, b) => b.id - a.id);
-    }, [payments, search, filterStatus]);
+    }, [payments, search, filterStatus, fromDate, toDate]);
 
     const totalPages = Math.ceil(filtered.length / itemsPerPage);
     const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -157,6 +170,8 @@ const ManagePayments = () => {
                             placeholder="Tìm mã giao dịch, mã đơn..."
                             className="w-full pl-8 pr-3 py-1.5 bg-[#f8f8fc] border border-transparent rounded-lg text-[13px] outline-none focus:border-[#c9a96e] focus:bg-white transition-all" />
                     </div>
+                    <div className="h-5 w-px bg-[#e8e8f0]" />
+                    <DateFilter onFilterChange={({ fromDate, toDate }) => { setFromDate(fromDate); setToDate(toDate); setCurrentPage(1); }} />
                     <div className="h-5 w-px bg-[#e8e8f0]" />
                     <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
                         {[{val:'ALL',label:'Tất cả'}, ...Object.entries(STATUS_CONFIG).map(([k,v])=>({val:k,label:v.label}))].map(({val,label}) => (

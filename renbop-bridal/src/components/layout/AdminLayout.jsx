@@ -5,10 +5,11 @@ import {
     LayoutDashboard, ShoppingBag, PackageSearch, Users,
     LogOut, ArrowLeft, Calendar, Scissors, RotateCcw,
     ChevronDown, ChevronRight, Menu, X,
-    Store, Sparkles, Layers, CreditCard, Search
+    Store, Sparkles, Layers, CreditCard, Search, History, Trophy
 } from 'lucide-react';
 import CommandPalette from '../common/CommandPalette';
 import NotificationCenter from '../common/NotificationCenter';
+import GamificationWidget from '../admin/GamificationWidget';
 
 const NAV_GROUPS = [
     {
@@ -35,6 +36,13 @@ const NAV_GROUPS = [
             { path: '/admin/returns',           icon: RotateCcw, label: 'Quản lý Trả' },
         ]
     },
+    {
+        label: 'HỆ THỐNG',
+        items: [
+            { path: '/admin/leaderboard',       icon: Trophy,    label: 'Bảng xếp hạng' },
+            { path: '/admin/activity-log',      icon: History,   label: 'Nhật ký HĐ' },
+        ]
+    }
 ];
 
 export default function AdminLayout({ children }) {
@@ -44,8 +52,14 @@ export default function AdminLayout({ children }) {
     const [notifOpen, setNotifOpen] = useState(false);
     const [searchVal, setSearchVal] = useState('');
     const [paletteOpen, setPaletteOpen] = useState(false);
+    const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
     useEffect(() => {
+        const handleOnline = () => setIsOffline(false);
+        const handleOffline = () => setIsOffline(true);
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
         const handleKeyDown = (e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
                 e.preventDefault();
@@ -53,7 +67,11 @@ export default function AdminLayout({ children }) {
             }
         };
         document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        }
     }, []);
 
     const isActive = (path) => location.pathname.startsWith(path);
@@ -139,6 +157,8 @@ export default function AdminLayout({ children }) {
 
             {/* ── Footer ── */}
             <div className="flex-shrink-0 p-3" style={{ borderTop: '1px solid var(--admin-sidebar-border)' }}>
+                <GamificationWidget />
+                
                 <Link to="/"
                     className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all mb-1"
                     style={{ color: 'rgba(255,255,255,0.28)' }}
@@ -233,6 +253,14 @@ export default function AdminLayout({ children }) {
                     </div>
 
                     <div className="ml-auto flex items-center gap-3">
+                        {/* Offline Indicator */}
+                        {isOffline && (
+                            <div className="hidden sm:flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 px-3 py-1.5 rounded-lg text-[12px] font-bold shadow-sm">
+                                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                                <span>Offline (Chế độ ngoại tuyến)</span>
+                            </div>
+                        )}
+
                         {/* Quick Create Button */}
                         <button className="hidden sm:flex items-center gap-1.5 bg-[#0d0e17] hover:bg-black text-white px-3 py-1.5 rounded-lg text-[12px] font-bold transition-all shadow-sm">
                             <Sparkles size={14} className="text-[#c9a96e]" />

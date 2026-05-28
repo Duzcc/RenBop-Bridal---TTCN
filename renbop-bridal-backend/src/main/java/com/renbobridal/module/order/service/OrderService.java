@@ -9,6 +9,8 @@ import com.renbobridal.module.order.dto.OrderRequest;
 import com.renbobridal.module.order.entity.Order;
 import com.renbobridal.module.order.entity.OrderItem;
 import com.renbobridal.module.order.entity.TailoringOrder;
+import com.renbobridal.module.order.entity.FittingSession;
+import com.renbobridal.module.order.repository.FittingSessionRepository;
 import com.renbobridal.module.auth.entity.CustomerMeasurement;
 import com.renbobridal.module.order.repository.OrderRepository;
 import com.renbobridal.module.order.repository.OrderItemRepository;
@@ -16,11 +18,14 @@ import com.renbobridal.module.order.repository.TailoringOrderRepository;
 import com.renbobridal.module.auth.repository.CustomerMeasurementRepository;
 import com.renbobridal.module.product.entity.ProductItem;
 import com.renbobridal.module.product.repository.ProductItemRepository;
+import com.renbobridal.module.gamification.service.GamificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
@@ -47,6 +52,7 @@ public class OrderService {
     private final UserRepository      userRepository;
     private final ProductItemRepository productItemRepository;
     private final EmailService        emailService;
+    private final GamificationService gamificationService;
 
     @Value("${app.frontend.url}")
     private String frontendUrl;
@@ -287,11 +293,24 @@ public class OrderService {
             restoreItemStatus(order);
         }
 
+        // Gamification: Award points to the staff member who completes the order
+        if (newStatus == Order.Status.COMPLETED && order.getStatus() != Order.Status.COMPLETED) {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof Long) {
+                Long staffId = (Long) auth.getPrincipal();
+                gamificationService.awardPoints(staffId, "ORDER_COMPLETED", 50, "Hoàn thành đơn hàng #" + order.getId());
+            }
+        }
+
+        // Gamification: Award points when rental is returned (COMPLETED = fully returned)
+        // Note: The system uses COMPLETED as the final status (including returns)
+        // Points for COMPLETED are already awarded above.
+
         order.setStatus(newStatus);
-        Order saved = orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
 
         log.info("[ORDER] Status updated orderId={} {} -> {}", orderId, oldStatus, newStatus);
-        return mapToDto(saved);
+        return mapToDto(savedOrder);
     }
 
     // ── Private helpers ──────────────────────────────────────────────────────

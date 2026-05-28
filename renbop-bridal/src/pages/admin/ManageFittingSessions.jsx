@@ -4,9 +4,10 @@ import { apiClient } from '../../utils/apiClient';
 import { useToast } from '../../context/ToastContext';
 import {
     Loader2, RefreshCw, Calendar, Search, X,
-    Plus, CheckCircle2, Clock, Ban, ChevronDown, Trash2, Video, Link as LinkIcon
+    Plus, CheckCircle2, Clock, Ban, ChevronDown, Trash2, Video, Link as LinkIcon, Filter
 } from 'lucide-react';
 import Pagination from '../../components/admin/Pagination';
+import DateFilter from '../../components/admin/DateFilter';
 
 /* ─── Config ─────────────────────────────────────────────────────── */
 const STATUS_CONFIG = {
@@ -64,6 +65,8 @@ const ManageFittingSessions = () => {
     const [search, setSearch]     = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
+    const [fromDate, setFromDate] = useState('');
+    const [toDate, setToDate] = useState('');
 
     const [scheduleModal, setScheduleModal] = useState(null);
     const [form, setForm]         = useState(FORM_INIT);
@@ -181,8 +184,17 @@ const ManageFittingSessions = () => {
             .filter(s => filterStatus === 'ALL' || s.status === filterStatus)
             .filter(s => !search || [s.customerName, s.productName, s.staffName, String(s.id)]
                 .some(v => v?.toLowerCase().includes(search.toLowerCase())))
+            .filter(s => {
+                if (!fromDate && !toDate) return true;
+                const d = new Date(s.fittingDate || s.createdAt); // Try fittingDate first, fallback to createdAt
+                if (isNaN(d.getTime())) return true;
+                const dStr = d.toISOString().split('T')[0];
+                if (fromDate && dStr < fromDate) return false;
+                if (toDate && dStr > toDate) return false;
+                return true;
+            })
             .sort((a, b) => new Date(b.fittingDate || 0) - new Date(a.fittingDate || 0));
-    }, [sessions, filterStatus, search]);
+    }, [sessions, filterStatus, search, fromDate, toDate]);
 
     const totalPages = Math.ceil(filtered.length / itemsPerPage);
     const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -246,6 +258,8 @@ const ManageFittingSessions = () => {
                             placeholder="Tìm cô dâu, nhân viên..."
                             className="w-full pl-8 pr-3 py-1.5 bg-[#f8f8fc] border border-transparent rounded-lg text-[13px] outline-none focus:border-[#c9a96e] focus:bg-white transition-all" />
                     </div>
+                    <div className="h-5 w-px bg-[#e8e8f0]" />
+                    <DateFilter onFilterChange={({ fromDate, toDate }) => { setFromDate(fromDate); setToDate(toDate); setCurrentPage(1); }} />
                     <div className="h-5 w-px bg-[#e8e8f0]" />
                     <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
                         {['ALL', ...Object.keys(STATUS_CONFIG)].map(s => (

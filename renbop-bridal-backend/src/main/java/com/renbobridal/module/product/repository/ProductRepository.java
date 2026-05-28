@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,4 +29,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Page<Product> searchProducts(@Param("keyword") String keyword,
                                  @Param("categorySlug") String categorySlug,
                                  Pageable pageable);
+
+    @Query("SELECT COUNT(p) FROM Product p WHERE " +
+           "(cast(:from as timestamp) IS NULL OR p.createdAt >= :from) " +
+           "AND (cast(:to as timestamp) IS NULL OR p.createdAt <= :to)")
+    long countProducts(@Param("from") Instant from, @Param("to") Instant to);
 }

@@ -32,11 +32,21 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     @EntityGraph(attributePaths = {"items", "items.productItem", "items.productItem.product", "customer", "staff"})
     Page<Order> findByStatusAndOrderType(Order.Status status, Order.OrderType orderType, Pageable pageable);
 
-    @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.status != 'CANCELLED'")
-    BigDecimal calculateTotalRevenue();
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.status != 'CANCELLED' " +
+           "AND (cast(:from as timestamp) IS NULL OR o.createdAt >= :from) " +
+           "AND (cast(:to as timestamp) IS NULL OR o.createdAt <= :to)")
+    BigDecimal calculateTotalRevenue(@Param("from") Instant from, @Param("to") Instant to);
 
-    @Query("SELECT o.status, COUNT(o) FROM Order o GROUP BY o.status")
-    List<Object[]> countOrdersByStatus();
+    @Query("SELECT o.status, COUNT(o) FROM Order o WHERE " +
+           "(cast(:from as timestamp) IS NULL OR o.createdAt >= :from) " +
+           "AND (cast(:to as timestamp) IS NULL OR o.createdAt <= :to) " +
+           "GROUP BY o.status")
+    List<Object[]> countOrdersByStatus(@Param("from") Instant from, @Param("to") Instant to);
+
+    @Query("SELECT COUNT(o) FROM Order o WHERE " +
+           "(cast(:from as timestamp) IS NULL OR o.createdAt >= :from) " +
+           "AND (cast(:to as timestamp) IS NULL OR o.createdAt <= :to)")
+    long countTotalOrders(@Param("from") Instant from, @Param("to") Instant to);
 
     List<Order> findTop7ByStatusNotOrderByCreatedAtDesc(Order.Status status);
 

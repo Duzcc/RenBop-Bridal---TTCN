@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { apiClient } from '../../utils/apiClient';
 import { useToast } from '../../context/ToastContext';
 import { downloadCSV } from '../../utils/exportUtils';
+import { generateOrderReport } from '../../utils/pdfExport';
 import {
     Loader2, RefreshCw, ShoppingBag, Search, X, 
     ChevronRight, Calendar, User, Mail, Phone,
@@ -10,7 +11,7 @@ import {
     Clock, Ban, Filter, MoreHorizontal, Download, Printer
 } from 'lucide-react';
 import Pagination from '../../components/admin/Pagination';
-
+import DateFilter from '../../components/admin/DateFilter';
 /* ─── Config ─────────────────────────────────────────────────────── */
 const STATUS_CONFIG = {
     PENDING:     { label: 'Chờ xử lý',   color: 'bg-amber-50   text-amber-700   border-amber-200',    dot: '#f59e0b' },
@@ -177,13 +178,7 @@ const ManageOrders = () => {
                         ))}
                     </div>
                     <div className="h-5 w-px bg-[#e8e8f0] hidden md:block" />
-                    <div className="flex items-center gap-2">
-                        <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
-                            className="bg-[#f8f8fc] border border-transparent rounded-lg text-[12px] font-bold text-[#0d0e17] px-2 py-1.5 outline-none hover:bg-[#f0f0f5] transition-all" title="Từ ngày" />
-                        <span className="text-[#9999b0] text-[12px]">-</span>
-                        <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
-                            className="bg-[#f8f8fc] border border-transparent rounded-lg text-[12px] font-bold text-[#0d0e17] px-2 py-1.5 outline-none hover:bg-[#f0f0f5] transition-all" title="Đến ngày" />
-                    </div>
+                    <DateFilter onFilterChange={({ fromDate, toDate }) => { setFromDate(fromDate); setToDate(toDate); }} />
                     <div className="ml-auto relative">
                         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
                             className="appearance-none bg-[#f8f8fc] border border-transparent rounded-lg text-[12px] font-bold text-[#0d0e17] px-3 py-1.5 pr-7 outline-none hover:bg-[#f0f0f5] cursor-pointer transition-all">
@@ -419,7 +414,11 @@ const ManageOrders = () => {
                                     Hủy đơn
                                 </button>
                             )}
-                            <button onClick={() => window.print()}
+                            <button onClick={async () => {
+                                showToast('Đang tạo file PDF...');
+                                await generateOrderReport(selectedOrder);
+                                showToast('✅ Xuất PDF thành công!');
+                            }}
                                 className="flex-1 min-w-[120px] px-6 py-3.5 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 rounded-2xl font-black transition-all text-[13px] flex items-center justify-center gap-2">
                                 <Printer size={15} /> In Hóa Đơn
                             </button>

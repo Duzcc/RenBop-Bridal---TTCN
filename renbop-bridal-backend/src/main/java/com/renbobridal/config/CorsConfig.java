@@ -21,8 +21,7 @@ public class CorsConfig {
         var source = new UrlBasedCorsConfigurationSource();
         var config = new CorsConfiguration();
 
-        List<String> origins = Arrays.asList(allowedOrigins.split(","));
-        config.setAllowedOrigins(origins);
+        config.setAllowedOriginPatterns(List.of("*"));
         
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));

@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,4 +40,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /** Tổng số đơn hàng của 1 khách hàng */
     @Query("SELECT COUNT(o) FROM Order o WHERE o.customer.id = :userId")
     long countOrdersByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT COUNT(u) FROM User u WHERE " +
+           "(cast(:from as timestamp) IS NULL OR u.createdAt >= :from) " +
+           "AND (cast(:to as timestamp) IS NULL OR u.createdAt <= :to)")
+    long countUsers(@Param("from") Instant from, @Param("to") Instant to);
 }

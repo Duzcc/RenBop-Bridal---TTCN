@@ -89,6 +89,18 @@ export const apiClient = async (endpoint, options = {}, _retry = false) => {
         return data;
     } catch (error) {
         if (!error.status) {
+            // Likely offline or server down
+            const method = options.method || 'GET';
+            if (method !== 'GET') {
+                try {
+                    const { enqueueRequest } = await import('./offlineSync.js');
+                    await enqueueRequest(endpoint, options);
+                    return { success: true, isOfflineQueued: true, message: 'Đã lưu cục bộ. Sẽ đồng bộ khi có mạng.' };
+                } catch (e) {
+                    console.error('Failed to queue offline action', e);
+                }
+            }
+
             throw {
                 status: 503,
                 message: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng!',
@@ -97,3 +109,13 @@ export const apiClient = async (endpoint, options = {}, _retry = false) => {
         throw error;
     }
 };
+
+// Listen for online event to process queue
+window.addEventListener('online', async () => {
+    try {
+        const { processQueue } = await import('./offlineSync.js');
+        await processQueue(apiClient);
+    } catch (error) {
+        console.error('Error processing offline queue on reconnect:', error);
+    }
+});

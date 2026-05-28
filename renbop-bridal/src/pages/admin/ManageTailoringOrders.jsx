@@ -4,9 +4,10 @@ import { apiClient } from '../../utils/apiClient';
 import { useToast } from '../../context/ToastContext';
 import {
     Loader2, RefreshCw, Scissors, ChevronDown, X,
-    Calendar, CheckCircle2, Package, Search, Plus
+    Calendar, CheckCircle2, Package, Search, Plus, Filter
 } from 'lucide-react';
 import Pagination from '../../components/admin/Pagination';
+import DateFilter from '../../components/admin/DateFilter';
 
 /* ─── Status Config (16-Week Cycle) ─────────────────────────────── */
 const STATUS_FLOW = ['MEASURED', 'CUTTING', 'SEWING', 'FITTING', 'DONE'];
@@ -96,6 +97,8 @@ const ManageTailoringOrders = () => {
     const [draggedOrder, setDraggedOrder] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
+    const [fromDate, setFromDate] = useState('');
+    const [toDate, setToDate] = useState('');
 
     // Internal note state
     const [noteText, setNoteText]   = useState('');
@@ -187,7 +190,16 @@ const ManageTailoringOrders = () => {
     const filtered = useMemo(() => orders
         .filter(o => filterStatus === 'ALL' || o.status === filterStatus)
         .filter(o => !search || [o.customerName, o.productName, o.productSku, String(o.id), String(o.orderId)]
-            .some(v => v?.toLowerCase().includes(search.toLowerCase()))), [orders, filterStatus, search]);
+            .some(v => v?.toLowerCase().includes(search.toLowerCase())))
+        .filter(o => {
+            if (!fromDate && !toDate) return true;
+            const d = new Date(o.createdAt);
+            if (isNaN(d.getTime())) return true;
+            const dStr = d.toISOString().split('T')[0];
+            if (fromDate && dStr < fromDate) return false;
+            if (toDate && dStr > toDate) return false;
+            return true;
+        }), [orders, filterStatus, search, fromDate, toDate]);
 
     const totalPages = Math.ceil(filtered.length / itemsPerPage);
     const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -232,6 +244,8 @@ const ManageTailoringOrders = () => {
                             placeholder="Tìm cô dâu, sản phẩm, mã phiếu..."
                             className="w-full pl-8 pr-3 py-1.5 bg-[#f8f8fc] border border-transparent rounded-lg text-[13px] outline-none focus:border-[#c9a96e] focus:bg-white transition-all" />
                     </div>
+                    <div className="h-5 w-px bg-[#e8e8f0]" />
+                    <DateFilter onFilterChange={({ fromDate, toDate }) => { setFromDate(fromDate); setToDate(toDate); setCurrentPage(1); }} />
                     <div className="h-5 w-px bg-[#e8e8f0]" />
                     <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
                         {['ALL', ...STATUS_FLOW].map(s => (

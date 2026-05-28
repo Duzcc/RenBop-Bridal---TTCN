@@ -38,5 +38,6 @@ public class ReturnDto {
         private String description;
         private BigDecimal repairCost;
         private Boolean chargedToCustomer;
+        private String severity;
     }
 }

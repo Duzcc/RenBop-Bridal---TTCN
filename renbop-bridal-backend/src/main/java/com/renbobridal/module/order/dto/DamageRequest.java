@@ -16,4 +16,6 @@ public class DamageRequest {
     private BigDecimal repairCost;
 
     private Boolean chargedToCustomer;
+
+    private String severity; // MINOR, MODERATE, SEVERE, LOST
 }

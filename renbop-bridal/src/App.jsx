@@ -33,6 +33,10 @@ import ManageTailoringOrders from './pages/admin/ManageTailoringOrders';
 import ManageReturns from './pages/admin/ManageReturns';
 import ManagePayments from './pages/admin/ManagePayments';
 import ManageCategories from './pages/admin/ManageCategories';
+import ActivityLog from './pages/admin/ActivityLog';
+import Leaderboard from './pages/admin/Leaderboard';
+
+import OfflineBanner from './components/OfflineBanner';
 
 // Scroll to top on route change
 const ScrollToTop = () => {
@@ -48,6 +52,7 @@ const App = () => {
     <AuthProvider>
       <ToastProvider>
         <CartProvider>
+          <OfflineBanner />
           <ScrollToTop />
           <Routes>
             {/* Standalone routes (No Header/Footer) */}
@@ -70,6 +75,8 @@ const App = () => {
                     <Route path="returns"            element={<ManageReturns />} />
                     <Route path="payments"           element={<ManagePayments />} />
                     <Route path="categories"         element={<ManageCategories />} />
+                    <Route path="activity-log"       element={<ActivityLog />} />
+                    <Route path="leaderboard"        element={<Leaderboard />} />
                   </Routes>
                 </AdminLayout>
               </AdminRoute>

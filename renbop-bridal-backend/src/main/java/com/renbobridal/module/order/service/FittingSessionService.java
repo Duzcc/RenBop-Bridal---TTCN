@@ -12,6 +12,7 @@ import com.renbobridal.module.order.entity.OrderItem;
 import com.renbobridal.module.order.entity.TailoringOrder;
 import com.renbobridal.module.order.repository.FittingSessionRepository;
 import com.renbobridal.module.order.repository.TailoringOrderRepository;
+import com.renbobridal.module.gamification.service.GamificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,7 @@ public class FittingSessionService {
     private final FittingSessionRepository fittingSessionRepository;
     private final TailoringOrderRepository tailoringOrderRepository;
     private final UserRepository userRepository;
+    private final GamificationService gamificationService;
 
     @Transactional(readOnly = true)
     public List<FittingSessionDto> getAllFittingSessions() {
@@ -94,10 +96,19 @@ public class FittingSessionService {
         }
 
         if (request.getStatus() != null) {
+            FittingSession.Status newStatus;
             try {
-                session.setStatus(FittingSession.Status.valueOf(request.getStatus().toUpperCase()));
+                newStatus = FittingSession.Status.valueOf(request.getStatus().toUpperCase());
             } catch (IllegalArgumentException e) {
                 throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
+            }
+
+            // Award points when staff completes a fitting session
+            boolean wasNotCompleted = session.getStatus() != FittingSession.Status.COMPLETED;
+            session.setStatus(newStatus);
+            if (newStatus == FittingSession.Status.COMPLETED && wasNotCompleted) {
+                Long staffId2 = session.getStaff() != null ? session.getStaff().getId() : null;
+                gamificationService.awardPoints(staffId2, "FITTING_COMPLETED", 10, "Hoàn thành lịch thử đồ #" + id);
             }
         }
 

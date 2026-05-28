@@ -44,12 +44,45 @@ public class DamageService {
         ProductItem productItem = productItemRepository.findById(productItemId)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
 
+        Damage.Severity severity = Damage.Severity.MINOR;
+        if (request.getSeverity() != null) {
+            try {
+                severity = Damage.Severity.valueOf(request.getSeverity().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                severity = Damage.Severity.MINOR;
+            }
+        }
+
+        BigDecimal repairCost = request.getRepairCost();
+        if (repairCost == null || repairCost.compareTo(BigDecimal.ZERO) <= 0) {
+            BigDecimal basePrice = productItem.getProduct().getBasePrice();
+            if (basePrice != null) {
+                switch (severity) {
+                    case MINOR:
+                        repairCost = basePrice.multiply(new BigDecimal("0.05"));
+                        break;
+                    case MODERATE:
+                        repairCost = basePrice.multiply(new BigDecimal("0.20"));
+                        break;
+                    case SEVERE:
+                        repairCost = basePrice.multiply(new BigDecimal("0.50"));
+                        break;
+                    case LOST:
+                        repairCost = basePrice;
+                        break;
+                }
+            } else {
+                repairCost = BigDecimal.ZERO;
+            }
+        }
+
         // Create damage record
         Damage damage = Damage.builder()
                 .returnRecord(returnRecord)
                 .productItem(productItem)
                 .description(request.getDescription())
-                .repairCost(request.getRepairCost() != null ? request.getRepairCost() : BigDecimal.ZERO)
+                .repairCost(repairCost)
+                .severity(severity)
                 .chargedToCustomer(request.getChargedToCustomer() != null ? request.getChargedToCustomer() : true)
                 .build();
 

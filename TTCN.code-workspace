@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "TTCN",
+			"path": "."
+		},
+		{
+			"name": "anhTTCN",
+			"path": "../anhTTCN"
+		}
+	],
+	"settings": {}
+}

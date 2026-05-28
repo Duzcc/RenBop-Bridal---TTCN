@@ -27,6 +27,10 @@ public class DashboardDto {
     // Biểu đồ doanh thu theo ngày
     private List<DailyRevenueDto> revenueChart;
 
+    // Cache metrics
+    private Boolean cacheHit;
+    private Long executionTimeMs;
+
     // Thống kê may đo đang thực hiện
     private long activeTailoringOrders;
 

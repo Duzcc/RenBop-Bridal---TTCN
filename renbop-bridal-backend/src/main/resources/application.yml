@@ -5,7 +5,7 @@ spring:
   application:
     name: renbo-bridal-backend
   config:
-    import: optional:file:.env[.properties]
+    import: optional:file:.env[.properties], optional:file:.env.local[.properties]
 
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5433/renbop_bridal}

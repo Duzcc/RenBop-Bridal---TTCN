@@ -9,6 +9,7 @@ import {
     Clock, Ban, Filter, AlertTriangle
 } from 'lucide-react';
 import Pagination from '../../components/admin/Pagination';
+import DateFilter from '../../components/admin/DateFilter';
 
 /* ─── Config ─────────────────────────────────────────────────────── */
 const STATUS_CONFIG = {
@@ -22,6 +23,8 @@ const ManageReturns = () => {
     const [loading, setLoading] = useState(true);
     const [search, setSearch]   = useState('');
     const [filterStatus, setFilterStatus] = useState('ALL');
+    const [fromDate, setFromDate] = useState('');
+    const [toDate, setToDate] = useState('');
     const { showToast }         = useToast();
     const [selected, setSelected] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
@@ -29,7 +32,7 @@ const ManageReturns = () => {
 
     // Damage form state
     const [showDamageForm, setShowDamageForm] = useState(false);
-    const [damageForm, setDamageForm] = useState({ productItemId: '', description: '', repairCost: '', chargedToCustomer: true });
+    const [damageForm, setDamageForm] = useState({ productItemId: '', description: '', repairCost: '', severity: 'MINOR', chargedToCustomer: true });
     const [submittingDamage, setSubmittingDamage] = useState(false);
 
     useEffect(() => { fetchReturns(); }, []);
@@ -48,21 +51,22 @@ const ManageReturns = () => {
 
     const handleReportDamage = async (e) => {
         e.preventDefault();
-        if (!damageForm.productItemId || !damageForm.description || !damageForm.repairCost) return;
+        if (!damageForm.productItemId || !damageForm.description) return;
         setSubmittingDamage(true);
         try {
             const res = await apiClient(`/damages/return/${selected.id}/product-item/${damageForm.productItemId}`, {
                 method: 'POST',
                 body: JSON.stringify({
                     description: damageForm.description,
-                    repairCost: Number(damageForm.repairCost),
+                    repairCost: damageForm.repairCost ? Number(damageForm.repairCost) : null,
+                    severity: damageForm.severity,
                     chargedToCustomer: damageForm.chargedToCustomer
                 })
             });
             if (res.success) {
                 showToast('✅ Đã ghi nhận hư hỏng');
                 setShowDamageForm(false);
-                setDamageForm({ productItemId: '', description: '', repairCost: '', chargedToCustomer: true });
+                setDamageForm({ productItemId: '', description: '', repairCost: '', severity: 'MINOR', chargedToCustomer: true });
                 fetchReturns();
                 setSelected(prev => ({...prev, damages: [...(prev.damages||[]), res.data]}));
             }
@@ -81,9 +85,18 @@ const ManageReturns = () => {
                 r.orderId.toString().includes(q) ||
                 r.customerName?.toLowerCase().includes(q);
             const matchStatus = filterStatus === 'ALL' || r.status === filterStatus;
-            return matchSearch && matchStatus;
+            let matchDate = true;
+            if (fromDate || toDate) {
+                const rDate = r.returnDate ? new Date(r.returnDate) : new Date(r.createdAt);
+                if (!isNaN(rDate.getTime())) {
+                    const rDateStr = rDate.toISOString().split('T')[0];
+                    if (fromDate && rDateStr < fromDate) matchDate = false;
+                    if (toDate && rDateStr > toDate) matchDate = false;
+                }
+            }
+            return matchSearch && matchStatus && matchDate;
         }).sort((a, b) => b.id - a.id);
-    }, [returns, search, filterStatus]);
+    }, [returns, search, filterStatus, fromDate, toDate]);
 
     const totalPages = Math.ceil(filtered.length / itemsPerPage);
     const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -128,6 +141,8 @@ const ManageReturns = () => {
                             placeholder="Tìm mã phiếu, mã đơn, tên khách..."
                             className="w-full pl-8 pr-3 py-1.5 bg-[#f8f8fc] border border-transparent rounded-lg text-[13px] outline-none focus:border-[#c9a96e] focus:bg-white transition-all" />
                     </div>
+                    <div className="h-5 w-px bg-[#e8e8f0]" />
+                    <DateFilter onFilterChange={({ fromDate, toDate }) => { setFromDate(fromDate); setToDate(toDate); setCurrentPage(1); }} />
                     <div className="h-5 w-px bg-[#e8e8f0]" />
                     <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
                         {[{val:'ALL',label:'Tất cả'}, ...Object.entries(STATUS_CONFIG).map(([k,v])=>({val:k,label:v.label}))].map(({val,label}) => (
@@ -277,11 +292,21 @@ const ManageReturns = () => {
                                                 placeholder="VD: Rách gấu váy 5cm, dính rượu vang..." rows={2}
                                                 className="w-full px-3 py-2.5 bg-white border border-[#e8e8f0] rounded-xl text-[13px] font-medium outline-none focus:border-[#c9a96e]" />
                                         </div>
+                                        <div>
+                                            <label className="block text-[11px] font-black uppercase tracking-wider text-[#9999b0] mb-1.5">Mức độ hư hại</label>
+                                            <select required value={damageForm.severity} onChange={e => setDamageForm({...damageForm, severity: e.target.value})}
+                                                className="w-full px-3 py-2.5 bg-white border border-[#e8e8f0] rounded-xl text-[13px] font-medium outline-none focus:border-[#c9a96e]">
+                                                <option value="MINOR">Nhẹ (5% giá trị váy)</option>
+                                                <option value="MODERATE">Trung bình (20% giá trị váy)</option>
+                                                <option value="SEVERE">Nặng (50% giá trị váy)</option>
+                                                <option value="LOST">Mất / Hỏng hoàn toàn (100% giá trị váy)</option>
+                                            </select>
+                                        </div>
                                         <div className="flex gap-4">
                                             <div className="flex-1">
-                                                <label className="block text-[11px] font-black uppercase tracking-wider text-[#9999b0] mb-1.5">Phí phạt (VNĐ)</label>
-                                                <input type="number" required min="0" value={damageForm.repairCost} onChange={e => setDamageForm({...damageForm, repairCost: e.target.value})}
-                                                    placeholder="0" className="w-full px-3 py-2.5 bg-white border border-[#e8e8f0] rounded-xl text-[13px] font-medium outline-none focus:border-[#c9a96e]" />
+                                                <label className="block text-[11px] font-black uppercase tracking-wider text-[#9999b0] mb-1.5">Phí phạt (Tùy chỉnh - Bỏ trống để tự động tính)</label>
+                                                <input type="number" min="0" value={damageForm.repairCost} onChange={e => setDamageForm({...damageForm, repairCost: e.target.value})}
+                                                    placeholder="Tự động tính dựa theo mức độ" className="w-full px-3 py-2.5 bg-white border border-[#e8e8f0] rounded-xl text-[13px] font-medium outline-none focus:border-[#c9a96e]" />
                                             </div>
                                         </div>
                                         <label className="flex items-center gap-2 cursor-pointer mt-2">
@@ -301,7 +326,7 @@ const ManageReturns = () => {
                                         {selected.damages.map((d, idx) => (
                                             <div key={idx} className="p-4 bg-red-50 rounded-2xl border border-red-100 flex flex-col gap-2">
                                                 <div className="flex justify-between items-center">
-                                                    <span className="text-[11px] font-black text-red-700 uppercase tracking-tight">SKU: {d.productSku}</span>
+                                                    <span className="text-[11px] font-black text-red-700 uppercase tracking-tight">SKU: {d.productSku} - {d.severity === 'MINOR' ? 'Nhẹ' : d.severity === 'MODERATE' ? 'Trung bình' : d.severity === 'SEVERE' ? 'Nặng' : d.severity === 'LOST' ? 'Mất/Hỏng' : ''}</span>
                                                     <span className="text-[13px] font-black text-red-700">{formatCurrency(d.repairCost)}</span>
                                                 </div>
                                                 <p className="text-[12px] text-red-600 font-medium italic">"{d.description}"</p>
@@ -323,10 +348,22 @@ const ManageReturns = () => {
 
                             {/* Total Fee Section */}
                             <div className="bg-[#0d0e17] rounded-3xl p-6 text-white shadow-xl shadow-black/20">
-                                <div className="flex justify-between text-[13px] opacity-60 mb-2">
-                                    <span>Phí trễ hạn:</span>
-                                    <span>{formatCurrency(selected.lateFee)}</span>
-                                </div>
+                                <div className="flex justify-between text-[13px] opacity-60 mb-2 items-center">
+                                                    <div className="flex items-center gap-1.5 relative group cursor-help">
+                                                        <span>Phí trễ hạn:</span>
+                                                        <ShieldAlert size={14} className="text-[#c9a96e]" />
+                                                        <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-white text-[#0d0e17] text-[11px] rounded-xl shadow-lg border border-[#e8e8f0] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                                                            <p className="font-bold mb-1 text-[12px]">Quy tắc tính phí trễ:</p>
+                                                            <ul className="list-disc pl-4 space-y-1 text-[#6b6b80]">
+                                                                <li>1-3 ngày: <span className="font-bold text-[#0d0e17]">50k/ngày</span></li>
+                                                                <li>4-7 ngày: <span className="font-bold text-[#0d0e17]">100k/ngày</span></li>
+                                                                <li>Trên 7 ngày: <span className="font-bold text-[#0d0e17]">200k/ngày</span></li>
+                                                            </ul>
+                                                            <div className="absolute -bottom-1.5 left-4 w-3 h-3 bg-white border-b border-r border-[#e8e8f0] rotate-45" />
+                                                        </div>
+                                                    </div>
+                                                    <span>{formatCurrency(selected.lateFee)}</span>
+                                                </div>
                                 <div className="flex justify-between text-[13px] opacity-60 mb-4">
                                     <span>Phí hư hại:</span>
                                     <span>{formatCurrency(selected.damages?.reduce((acc, d) => acc + (d.chargedToCustomer ? d.repairCost : 0), 0))}</span>
